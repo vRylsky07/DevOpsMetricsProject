@@ -1,5 +1,6 @@
 package storage
 
+// Enum для типа метрики
 type MetricType int
 
 const (
@@ -7,11 +8,16 @@ const (
 	Counter
 )
 
+// описание хранилища данных
 type MemStorage struct {
 	gauge   map[string]float64
 	counter map[string]int
 }
 
+// инстанс хранилища
+var mStrg *MemStorage
+
+// обновление метрик с указанием Enum типа
 func (mStr *MemStorage) UpdateMetricByName(mType MetricType, mName string, mValue float64) {
 	switch mType {
 	case Gauge:
@@ -21,6 +27,7 @@ func (mStr *MemStorage) UpdateMetricByName(mType MetricType, mName string, mValu
 	}
 }
 
+// геттер метрик по имени
 func (mStr *MemStorage) GetMetricByName(mType MetricType, mName string) float64 {
 	switch mType {
 	case Gauge:
@@ -40,6 +47,7 @@ func (mStr *MemStorage) GetMetricByName(mType MetricType, mName string) float64 
 	}
 }
 
+// инициализация экземпляра хранилища данных для mStrg
 func InitMemStorage() {
 	mStrg = &MemStorage{
 		gauge:   map[string]float64{},
@@ -47,8 +55,7 @@ func InitMemStorage() {
 	}
 }
 
-func GetMemStrorage() *MemStorage {
+// геттер инстанса хранилища
+func GetMemStorage() *MemStorage {
 	return mStrg
 }
-
-var mStrg *MemStorage
