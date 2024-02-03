@@ -2,7 +2,6 @@ package server
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -34,10 +33,11 @@ func mainPage(res http.ResponseWriter, req *http.Request) {
 	finalReqStatus := http.StatusInternalServerError
 
 	if req.Method == http.MethodPost {
-		if isValid, error := HeadersValidator(&req.Header); !isValid {
+		/*if isValid, error := HeadersValidator(&req.Header); !isValid {
 			http.Error(res, "Headers validation FAILED\n"+error, finalReqStatus)
 			return
 		}
+		*/
 		parsedURL := ParsePath(string(req.URL.Path), &finalReqStatus)
 		if parsedURL != nil {
 			res.WriteHeader(finalReqStatus)
@@ -65,6 +65,7 @@ func ParsePath(p string, status *int) []string {
 }
 
 // валидатор хедера Content-type
+/*
 func HeadersValidator(headers *http.Header) (bool, string) {
 	headerContentType, ok := (*headers)["Content-Type"]
 	if !ok {
@@ -86,3 +87,4 @@ func HeadersValidator(headers *http.Header) (bool, string) {
 
 	return isValid, err
 }
+*/
