@@ -31,14 +31,14 @@ func GetDompMux() *http.ServeMux {
 
 // хэндлер POST-запроса на /update/
 func mainPage(res http.ResponseWriter, req *http.Request) {
-	finalReqStatus := http.StatusInternalServerError
+	finalReqStatus := http.StatusBadRequest
 
 	if req.Method == http.MethodPost {
-		if isValid, error := HeadersValidator(&req.Header); !isValid {
-			http.Error(res, "Headers validation FAILED\n"+error, finalReqStatus)
+		if isValid := HeadersValidator(&req.Header); !isValid {
+			http.Error(res, "Headers validation FAILED", finalReqStatus)
 			return
 		}
-		parsedURL := ParsePath(string(req.URL.Path), &finalReqStatus)
+		parsedURL := ParseAndValidateURL(string(req.URL.Path), &finalReqStatus)
 		if parsedURL != nil {
 			res.WriteHeader(finalReqStatus)
 			res.Write([]byte("Metrics was been updated! Thank you!"))
@@ -48,8 +48,8 @@ func mainPage(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Your request is incorrect!", finalReqStatus)
 }
 
-// Разбивка строки и проверка соответствия передаваемых данных
-func ParsePath(p string, status *int) []string {
+// Разбивка URL-строки и проверка соответствия передаваемых данных
+func ParseAndValidateURL(p string, status *int) []string {
 	var pathParsed = strings.Split(string(p), "/")
 
 	if len(pathParsed) <= 3 || (len(pathParsed) >= 4 && pathParsed[3] == "") {
@@ -58,31 +58,32 @@ func ParsePath(p string, status *int) []string {
 	}
 
 	if len(pathParsed) == 5 && pathParsed[1] == "update" && (pathParsed[2] == "gauge" || pathParsed[2] == "counter") {
-		*status = http.StatusOK
-		return pathParsed
+
+		_, valueValidate := strconv.ParseFloat(pathParsed[4], 64)
+
+		if valueValidate == nil {
+			*status = http.StatusOK
+			return pathParsed
+		}
 	}
 	return nil
 }
 
 // валидатор хедера Content-type
-func HeadersValidator(headers *http.Header) (bool, string) {
+func HeadersValidator(headers *http.Header) bool {
 	headerContentType, ok := (*headers)["Content-Type"]
-	if !ok {
-		allHeaders := "All headers in your request: "
-		for header := range *headers {
-			allHeaders += header + " "
+
+	if ok && FindHeaderValue(headerContentType, "text/plain") {
+		return true
+	}
+	return false
+}
+
+func FindHeaderValue(arrayStr []string, comparingStr string) bool {
+	for _, value := range arrayStr {
+		if value == comparingStr {
+			return true
 		}
-		return false, "Content-type header not exist " + "\n" + allHeaders
 	}
-
-	isValid := len(headerContentType) == 1 && headerContentType[0] == "text/plain"
-	var err string
-
-	if !isValid {
-		notEmpty := len(headerContentType) == 1
-		equalType := headerContentType[0] == "text/plain; charset=utf-8"
-		err = "Header content-type not empty? " + strconv.FormatBool(notEmpty) + " Is valid? " + strconv.FormatBool(equalType)
-	}
-
-	return isValid, err
+	return false
 }
