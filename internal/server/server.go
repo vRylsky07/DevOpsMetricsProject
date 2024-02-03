@@ -32,6 +32,7 @@ func GetDompMux() *http.ServeMux {
 // хэндлер POST-запроса на /update/
 func mainPage(res http.ResponseWriter, req *http.Request) {
 	finalReqStatus := http.StatusBadRequest
+	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
 
 	if req.Method == http.MethodPost {
 		if isValid, error := HeadersValidator(&req.Header); !isValid {
