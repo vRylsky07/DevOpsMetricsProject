@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -30,40 +31,58 @@ func GetDompMux() *http.ServeMux {
 
 // хэндлер POST-запроса на /update/
 func mainPage(res http.ResponseWriter, req *http.Request) {
+	finalReqStatus := http.StatusBadRequest
+
 	if req.Method == http.MethodPost {
-		parsedURL := ParsePath(string(req.URL.Path))
-		if parsedURL != nil {
-			res.Write([]byte("Do: " + parsedURL[1]))
-			res.Write([]byte(" Type: " + parsedURL[2]))
+		if isValid, error := HeadersValidator(&req.Header); !isValid {
+			http.Error(res, "Headers validation FAILED\n"+error, finalReqStatus)
 			return
 		}
-		res.Write([]byte("Запрос составлен неверно. Проверьте и отправьте еще раз."))
-	} else {
-		res.Write(testFormPOST)
+		parsedURL := ParsePath(string(req.URL.Path), &finalReqStatus)
+		if parsedURL != nil {
+			res.WriteHeader(finalReqStatus)
+			res.Write([]byte("Metrics was been updated! Thank you!"))
+			return
+		}
 	}
+	http.Error(res, "Your request is incorrect!", finalReqStatus)
 }
 
 // Разбивка строки и проверка соответствия передаваемых данных
-func ParsePath(p string) []string {
+func ParsePath(p string, status *int) []string {
 	var pathParsed = strings.Split(string(p), "/")
+
+	if len(pathParsed) <= 3 || (len(pathParsed) >= 4 && pathParsed[3] == "") {
+		*status = http.StatusNotFound
+		return nil
+	}
+
 	if len(pathParsed) == 5 && pathParsed[1] == "update" && (pathParsed[2] == "gauge" || pathParsed[2] == "counter") {
+		*status = http.StatusOK
 		return pathParsed
 	}
 	return nil
 }
 
-// тестовая страница для отправки POST запроса
-var testFormPOST []byte = []byte(`<html>
-<head>
-<title></title>
-</head>
-<body>
-	<h3> Страница тестирования POST-запросов </h3> 
-	<h3>Введите логин и пароль для отправки: </h3>
-	<form action="/update/counter/Metric/36.6" method="post">
-		<label>Логин <input type="text" name="login"></label>
-		<label>Пароль <input type="password" name="password"></label>
-		<input type="submit" value="Login">
-	</form>
-</body>
-</html>`)
+// валидатор хедера Content-type
+func HeadersValidator(headers *http.Header) (bool, string) {
+	headerContentType, ok := (*headers)["Content-Type"]
+	if !ok {
+		var allHeaders string = "All headers in your request: "
+		for header := range *headers {
+			allHeaders += header + " "
+		}
+		return false, "Content-type header not exist " + "\n" + allHeaders
+	}
+
+	isValid := len(headerContentType) == 1 && headerContentType[0] == "text/plain"
+	var err string
+
+	if !isValid {
+		notEmpty := len(headerContentType) == 1
+		equalType := headerContentType[0] == "text/plain; charset=utf-8"
+		err = "Header content-type not empty? " + strconv.FormatBool(notEmpty) + " Is valid? " + strconv.FormatBool(equalType)
+	}
+
+	return isValid, err
+}
