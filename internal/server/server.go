@@ -31,21 +31,8 @@ func GetDompMux() *http.ServeMux {
 
 // хэндлер POST-запроса на /update/
 func mainPage(res http.ResponseWriter, req *http.Request) {
-	finalReqStatus := http.StatusBadRequest
-	res.Header().Add("Content-Type", "text/plain; charset=utf-8")
+	finalReqStatus := http.StatusInternalServerError
 
-	if req.Method == http.MethodPost {
-		if isValid, error := HeadersValidator(&req.Header); !isValid {
-			http.Error(res, "Headers validation FAILED\n"+error, finalReqStatus)
-			return
-		}
-		parsedURL := ParsePath(string(req.URL.Path), &finalReqStatus)
-		if parsedURL != nil {
-			res.WriteHeader(finalReqStatus)
-			res.Write([]byte("Metrics was been updated! Thank you!"))
-			return
-		}
-	}
 	http.Error(res, "Your request is incorrect!", finalReqStatus)
 }
 
