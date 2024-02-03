@@ -34,10 +34,11 @@ func mainPage(res http.ResponseWriter, req *http.Request) {
 	finalReqStatus := http.StatusBadRequest
 
 	if req.Method == http.MethodPost {
-		if isValid := HeadersValidator(&req.Header); !isValid {
+		/*if isValid := HeadersValidator(&req.Header); !isValid {
 			http.Error(res, "Headers validation FAILED", finalReqStatus)
 			return
 		}
+		*/
 		parsedURL := ParseAndValidateURL(string(req.URL.Path), &finalReqStatus)
 		if parsedURL != nil {
 			res.WriteHeader(finalReqStatus)
@@ -70,7 +71,7 @@ func ParseAndValidateURL(p string, status *int) []string {
 }
 
 // валидатор хедера Content-type
-func HeadersValidator(headers *http.Header) bool {
+/*func HeadersValidator(headers *http.Header) bool {
 	headerContentType, ok := (*headers)["Content-Type"]
 
 	if ok && FindHeaderValue(headerContentType, "text/plain") {
@@ -78,6 +79,7 @@ func HeadersValidator(headers *http.Header) bool {
 	}
 	return false
 }
+
 
 func FindHeaderValue(arrayStr []string, comparingStr string) bool {
 	for _, value := range arrayStr {
@@ -87,3 +89,4 @@ func FindHeaderValue(arrayStr []string, comparingStr string) bool {
 	}
 	return false
 }
+*/
