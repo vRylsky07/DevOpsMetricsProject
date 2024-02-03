@@ -16,23 +16,35 @@ func StartServerOnPort(port string) {
 }
 
 // инстанс главного в проекте маршрутизатора
-var domp_mux *http.ServeMux
+var dompMux *http.ServeMux
 
 // инициализация маршрутизатора
 func CoreMuxInit() {
-	domp_mux = http.NewServeMux()
-	domp_mux.HandleFunc("/update/", mainPage)
+	dompMux = http.NewServeMux()
+	dompMux.HandleFunc("/update/", mainPage)
 }
 
 // геттер маршрутизатора
 func GetDompMux() *http.ServeMux {
-	return domp_mux
+	return dompMux
 }
 
 // хэндлер POST-запроса на /update/
 func mainPage(res http.ResponseWriter, req *http.Request) {
 	finalReqStatus := http.StatusInternalServerError
 
+	if req.Method == http.MethodPost {
+		if isValid, error := HeadersValidator(&req.Header); !isValid {
+			http.Error(res, "Headers validation FAILED\n"+error, finalReqStatus)
+			return
+		}
+		parsedURL := ParsePath(string(req.URL.Path), &finalReqStatus)
+		if parsedURL != nil {
+			res.WriteHeader(finalReqStatus)
+			res.Write([]byte("Metrics was been updated! Thank you!"))
+			return
+		}
+	}
 	http.Error(res, "Your request is incorrect!", finalReqStatus)
 }
 
@@ -56,7 +68,7 @@ func ParsePath(p string, status *int) []string {
 func HeadersValidator(headers *http.Header) (bool, string) {
 	headerContentType, ok := (*headers)["Content-Type"]
 	if !ok {
-		var allHeaders string = "All headers in your request: "
+		allHeaders := "All headers in your request: "
 		for header := range *headers {
 			allHeaders += header + " "
 		}
