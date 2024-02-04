@@ -3,6 +3,7 @@ package storage
 // Enum для типа метрики
 type MetricType int
 
+// константы для проверок типа
 const (
 	Gauge MetricType = iota
 	Counter
