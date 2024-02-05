@@ -13,6 +13,12 @@ const (
 type MemStorage struct {
 	gauge   map[string]float64
 	counter map[string]int
+	Test    int
+}
+
+func (mStg *MemStorage) SetMemStorage(g map[string]float64, c map[string]int) {
+	mStg.gauge = g
+	mStg.counter = c
 }
 
 // инстанс хранилища
