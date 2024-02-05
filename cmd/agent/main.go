@@ -1,17 +1,13 @@
 package main
 
 import (
-	"DevOpsMetricsProject/internal/metrics"
-	"fmt"
+	"DevOpsMetricsProject/internal/sender"
+	"sync"
 )
 
 func main() {
-	test := metrics.GetGaugeMetrics()
-	test2 := metrics.GetCounterMetrics()
-	test2 = metrics.GetCounterMetrics()
-	test2 = metrics.GetCounterMetrics()
-	for k, v := range test {
-		fmt.Println("Key: "+k+" Value: ", v)
-	}
-	fmt.Println("POLL COUNT: ", test2["PollCount"])
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go sender.UpdateMetrics(2)
+	wg.Wait()
 }

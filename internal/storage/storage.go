@@ -21,9 +21,13 @@ func (mStg *MemStorage) SetMemStorage(g map[string]float64, c map[string]int) {
 }
 
 // инстанциация хранилища
-var mStrg *MemStorage = &MemStorage{
-	gauge:   map[string]float64{},
-	counter: map[string]int{},
+var mStrg *MemStorage = CreateMemStorage()
+
+func CreateMemStorage() *MemStorage {
+	return &MemStorage{
+		gauge:   map[string]float64{},
+		counter: map[string]int{},
+	}
 }
 
 // обновление метрик с указанием Enum типа

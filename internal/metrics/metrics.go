@@ -1,18 +1,10 @@
 package metrics
 
 import (
-	"DevOpsMetricsProject/internal/storage"
 	"math/rand"
 	"runtime"
 	"time"
 )
-
-// собираем все метрики для отправки
-func GetAllMetrics() storage.MemStorage {
-	MemStg := storage.MemStorage{}
-	MemStg.SetMemStorage(GetGaugeMetrics(), GetCounterMetrics())
-	return MemStg
-}
 
 // создание экземпляра счетчика
 var PollCount int = 0
