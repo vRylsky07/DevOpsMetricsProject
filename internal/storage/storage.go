@@ -13,7 +13,6 @@ const (
 type MemStorage struct {
 	gauge   map[string]float64
 	counter map[string]int
-	Test    int
 }
 
 func (mStg *MemStorage) SetMemStorage(g map[string]float64, c map[string]int) {
@@ -21,8 +20,11 @@ func (mStg *MemStorage) SetMemStorage(g map[string]float64, c map[string]int) {
 	mStg.counter = c
 }
 
-// инстанс хранилища
-var mStrg *MemStorage
+// инстанциация хранилища
+var mStrg *MemStorage = &MemStorage{
+	gauge:   map[string]float64{},
+	counter: map[string]int{},
+}
 
 // обновление метрик с указанием Enum типа
 func (mStr *MemStorage) UpdateMetricByName(mType MetricType, mName string, mValue float64) {
@@ -54,15 +56,7 @@ func (mStr *MemStorage) GetMetricByName(mType MetricType, mName string) float64 
 	}
 }
 
-// инициализация экземпляра хранилища данных для mStrg
-func InitMemStorage() {
-	mStrg = &MemStorage{
-		gauge:   map[string]float64{},
-		counter: map[string]int{},
-	}
-}
-
-// геттер инстанса хранилища
+// геттер экземпляра хранилища
 func GetMemStorage() *MemStorage {
 	return mStrg
 }
