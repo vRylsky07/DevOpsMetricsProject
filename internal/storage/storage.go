@@ -20,6 +20,10 @@ func (mStg *MemStorage) SetMemStorage(g map[string]float64, c map[string]int) {
 	mStg.counter = c
 }
 
+func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[string]int) {
+	return mStg.gauge, mStg.counter
+}
+
 // инстанциация хранилища
 var mStrg *MemStorage = CreateMemStorage()
 
