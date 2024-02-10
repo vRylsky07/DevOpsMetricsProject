@@ -80,15 +80,15 @@ func CreateMetricURL(mType constants.MetricType, mainURL string, name string, va
 	case constants.CounterType:
 		mTypeString = "/counter/"
 	}
-	return mainURL + "/update" + mTypeString + name + "/" + strconv.FormatFloat(value, 'f', 6, 64)
+	return mainURL + "/update" + mTypeString + name + "/" + strconv.FormatFloat(value, 'f', 2, 64)
 }
 
 func CreateSender() *SenderStorage {
-	agentStorage := storage.MemStorage{}
-	agentStorage.InitMemStorage()
+	senderStorage := storage.MemStorage{}
+	senderStorage.InitMemStorage()
 
 	mSender := &SenderStorage{}
-	mSender.InitSenderStorage(&agentStorage)
+	mSender.InitSenderStorage(&senderStorage)
 
 	return mSender
 }

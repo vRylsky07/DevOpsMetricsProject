@@ -1,6 +1,8 @@
 package storage
 
-import "DevOpsMetricsProject/internal/constants"
+import (
+	"DevOpsMetricsProject/internal/constants"
+)
 
 type StorageInterface interface {
 	InitMemStorage()
@@ -15,16 +17,21 @@ type MemStorage struct {
 	counter map[string]int
 }
 
+func (mStg *MemStorage) GetGauge() map[string]float64 {
+	return mStg.gauge
+}
+
 func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[string]int) {
 	return mStg.gauge, mStg.counter
 }
 
 func (mStg *MemStorage) InitMemStorage() {
-	mStg = &MemStorage{map[string]float64{}, map[string]int{}}
+	mStg.gauge, mStg.counter = map[string]float64{}, map[string]int{}
 }
 
 // обновление метрик с указанием Enum типа
 func (mStg *MemStorage) UpdateMetricByName(mType constants.MetricType, mName string, mValue float64) {
+
 	switch mType {
 	case constants.GaugeType:
 		mStg.gauge[mName] = mValue

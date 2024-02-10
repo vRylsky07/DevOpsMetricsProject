@@ -1,20 +1,22 @@
 package main
 
 import (
-	//"DevOpsMetricsProject/internal/sender"
+	"DevOpsMetricsProject/internal/sender"
 	"sync"
 )
 
 func main() {
-	StartAgent()
+	StartAgent(2, 10)
 }
 
 // запуск http-клиента
-func StartAgent() {
+func StartAgent(pollInterval int, reportInterval int) {
 
-	//mSender := sender.CreateSender()
+	mSender := sender.CreateSender()
 
 	var wg sync.WaitGroup
 	wg.Add(2)
+	go mSender.UpdateMetrics(pollInterval)
+	go mSender.SendMetricsHTTP(reportInterval)
 	wg.Wait()
 }
