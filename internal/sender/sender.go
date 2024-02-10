@@ -11,9 +11,9 @@ import (
 )
 
 type SenderInterface interface {
-	InitSenderStorage(newStg storage.StorageInterface) SenderInterface
+	InitSenderStorage(newStg storage.StorageInterface)
 	GetStorage() storage.StorageInterface
-	UpdateMetrics(pollInterval int)
+	UpdateMetrics(mCollector metrics.MetricsCollectorInterface, pollInterval int)
 	SendMetricsHTTP(reportInterval int)
 	CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string
 }
@@ -26,13 +26,12 @@ func (sStg *SenderStorage) GetStorage() storage.StorageInterface {
 	return sStg.senderMemStorage
 }
 
-func (sStg *SenderStorage) InitSenderStorage(newStg storage.StorageInterface) SenderInterface {
+func (sStg *SenderStorage) InitSenderStorage(newStg storage.StorageInterface) {
 	sStg.senderMemStorage = newStg
-	return sStg
 }
 
 // обновление метрик
-func (sStg *SenderStorage) UpdateMetrics(pollInterval int) {
+func (sStg *SenderStorage) UpdateMetrics(mCollector metrics.MetricsCollectorInterface, pollInterval int) {
 
 	if sStg == nil {
 		sStg.GetStorage().SetMemStorage(map[string]float64{}, map[string]int{})
@@ -40,7 +39,10 @@ func (sStg *SenderStorage) UpdateMetrics(pollInterval int) {
 
 	for {
 		time.Sleep(time.Duration(pollInterval) * time.Second)
-		sStg.GetStorage().SetMemStorage(metrics.UpdateGaugeMetrics(), metrics.UpdateCounterMetrics())
+		mCollector.UpdateCounterMetrics()
+		mCollector.UpdateGaugeMetrics()
+		gauge, counter := mCollector.ReadMetricsCollector()
+		sStg.GetStorage().SetMemStorage(gauge, counter)
 	}
 }
 
@@ -88,4 +90,14 @@ func (sStg *SenderStorage) CreateMetricURL(mType constants.MetricType, mainURL s
 		mTypeString = "/counter/"
 	}
 	return mainURL + "/update" + mTypeString + name + "/" + strconv.FormatFloat(value, 'f', 6, 64)
+}
+
+func CreateSender() *SenderStorage {
+	agentStorage := storage.MemStorage{}
+	agentStorage.InitMemStorage()
+
+	mSender := &SenderStorage{}
+	mSender.InitSenderStorage(&agentStorage)
+
+	return mSender
 }

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"DevOpsMetricsProject/internal/metrics"
+	"DevOpsMetricsProject/internal/sender"
 	"sync"
 )
 
@@ -10,9 +12,14 @@ func main() {
 
 // запуск http-клиента
 func StartAgent() {
+
+	mCollector := &metrics.MetricsCollector{}
+	mCollector.InitMetricsCollector()
+
+	mSender := sender.CreateSender()
+
 	var wg sync.WaitGroup
 	wg.Add(2)
-	//go sender.UpdateMetrics(2)
-	//go sender.SendMetricsHTTP(10)
+	mSender.UpdateMetrics(mCollector, 2)
 	wg.Wait()
 }

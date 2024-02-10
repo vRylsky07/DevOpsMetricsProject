@@ -3,7 +3,7 @@ package storage
 import "DevOpsMetricsProject/internal/constants"
 
 type StorageInterface interface {
-	InitMemStorage() StorageInterface
+	InitMemStorage()
 	SetMemStorage(g map[string]float64, c map[string]int)
 	ReadMemStorageFields() (g map[string]float64, c map[string]int)
 	UpdateMetricByName(mType constants.MetricType, mName string, mValue float64)
@@ -25,14 +25,8 @@ func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[stri
 	return mStg.gauge, mStg.counter
 }
 
-func (mStg *MemStorage) InitMemStorage() StorageInterface {
+func (mStg *MemStorage) InitMemStorage() {
 	mStg = &MemStorage{map[string]float64{}, map[string]int{}}
-	return mStg
-}
-
-func (mStg *MemStorage) CreateMemStorage() *MemStorage {
-	mStg = &MemStorage{map[string]float64{}, map[string]int{}}
-	return mStg
 }
 
 // обновление метрик с указанием Enum типа

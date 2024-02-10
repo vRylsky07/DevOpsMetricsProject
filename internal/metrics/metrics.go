@@ -1,87 +1,78 @@
 package metrics
 
 import (
-	"math/rand"
+	"DevOpsMetricsProject/internal/functionslibrary"
 	"runtime"
-	"time"
 )
 
 type MetricsCollectorInterface interface {
 	InitMetricsCollector() MetricsCollectorInterface
-	UpdateCounterMetrics() map[string]int
-	UpdateGaugeMetrics() map[string]float64
-	GenerateRandomValue(min int, max int, precision int) float64
+	UpdateCounterMetrics()
+	UpdateGaugeMetrics()
+	ReadMetricsCollector() (map[string]float64, map[string]int)
 }
 
 type MetricsCollector struct {
-	PollCount int
+	gauge   map[string]float64
+	counter map[string]int
 }
 
 func (mCollector *MetricsCollector) InitMetricsCollector() MetricsCollectorInterface {
-	mCollector.PollCount = 0
+	mCollector.gauge, mCollector.counter = map[string]float64{}, map[string]int{}
+	mCollector.counter["PollCount"] = 0
 	return mCollector
 }
 
 // сбор всех counter-метрик
-func (mCollector *MetricsCollector) UpdateCounterMetrics() map[string]int {
-	finalCounterMap := map[string]int{}
-	mCollector.PollCount++
-	finalCounterMap["PollCount"] += mCollector.PollCount
-	return finalCounterMap
+func (mCollector *MetricsCollector) UpdateCounterMetrics() {
+	if mCollector == nil {
+		mCollector.InitMetricsCollector()
+	}
+
+	mCollector.counter["PollCount"] += 1
 }
 
 // сбор всех gauge-метрик
-func (mCollector *MetricsCollector) UpdateGaugeMetrics() map[string]float64 {
-	finalGaugeMap := map[string]float64{}
+func (mCollector *MetricsCollector) UpdateGaugeMetrics() {
 
-	finalGaugeMap["RandomValue"] = mCollector.GenerateRandomValue(-10000, 10000, 3)
+	if mCollector == nil {
+		mCollector.InitMetricsCollector()
+	}
 
 	var mFromRuntime *runtime.MemStats = &runtime.MemStats{}
 	runtime.ReadMemStats(mFromRuntime)
 
-	finalGaugeMap["Alloc"] = float64(mFromRuntime.Alloc)
-	finalGaugeMap["BuckHashSys"] = float64(mFromRuntime.BuckHashSys)
-	finalGaugeMap["Frees"] = float64(mFromRuntime.Frees)
-	finalGaugeMap["GCCPUFraction"] = float64(mFromRuntime.GCCPUFraction)
-	finalGaugeMap["GCSys"] = float64(mFromRuntime.GCSys)
-	finalGaugeMap["HeapAlloc"] = float64(mFromRuntime.HeapAlloc)
-	finalGaugeMap["HeapIdle"] = float64(mFromRuntime.HeapIdle)
-	finalGaugeMap["HeapInuse"] = float64(mFromRuntime.HeapInuse)
-	finalGaugeMap["HeapReleased"] = float64(mFromRuntime.HeapReleased)
-	finalGaugeMap["HeapObjects"] = float64(mFromRuntime.HeapObjects)
-	finalGaugeMap["HeapSys"] = float64(mFromRuntime.HeapSys)
-	finalGaugeMap["LastGC"] = float64(mFromRuntime.LastGC)
-	finalGaugeMap["Lookups"] = float64(mFromRuntime.Lookups)
-	finalGaugeMap["MCacheInuse"] = float64(mFromRuntime.MCacheInuse)
-	finalGaugeMap["MCacheSys"] = float64(mFromRuntime.MCacheSys)
-	finalGaugeMap["MSpanInuse"] = float64(mFromRuntime.MSpanInuse)
-	finalGaugeMap["MSpanSys"] = float64(mFromRuntime.MSpanSys)
-	finalGaugeMap["Mallocs"] = float64(mFromRuntime.Mallocs)
-	finalGaugeMap["NextGC"] = float64(mFromRuntime.NextGC)
-	finalGaugeMap["NumForcedGC"] = float64(mFromRuntime.NumForcedGC)
-	finalGaugeMap["NumGC"] = float64(mFromRuntime.NumGC)
-	finalGaugeMap["OtherSys"] = float64(mFromRuntime.OtherSys)
-	finalGaugeMap["PauseTotalNs"] = float64(mFromRuntime.PauseTotalNs)
-	finalGaugeMap["StackInuse"] = float64(mFromRuntime.StackInuse)
-	finalGaugeMap["StackSys"] = float64(mFromRuntime.StackSys)
-	finalGaugeMap["Sys"] = float64(mFromRuntime.Sys)
-	finalGaugeMap["TotalAlloc"] = float64(mFromRuntime.TotalAlloc)
+	mCollector.gauge["RandomValue"] = functionslibrary.GenerateRandomValue(-10000, 10000, 3)
 
-	return finalGaugeMap
+	mCollector.gauge["Alloc"] = float64(mFromRuntime.Alloc)
+	mCollector.gauge["BuckHashSys"] = float64(mFromRuntime.BuckHashSys)
+	mCollector.gauge["Frees"] = float64(mFromRuntime.Frees)
+	mCollector.gauge["GCCPUFraction"] = float64(mFromRuntime.GCCPUFraction)
+	mCollector.gauge["GCSys"] = float64(mFromRuntime.GCSys)
+	mCollector.gauge["HeapAlloc"] = float64(mFromRuntime.HeapAlloc)
+	mCollector.gauge["HeapIdle"] = float64(mFromRuntime.HeapIdle)
+	mCollector.gauge["HeapInuse"] = float64(mFromRuntime.HeapInuse)
+	mCollector.gauge["HeapReleased"] = float64(mFromRuntime.HeapReleased)
+	mCollector.gauge["HeapObjects"] = float64(mFromRuntime.HeapObjects)
+	mCollector.gauge["HeapSys"] = float64(mFromRuntime.HeapSys)
+	mCollector.gauge["LastGC"] = float64(mFromRuntime.LastGC)
+	mCollector.gauge["Lookups"] = float64(mFromRuntime.Lookups)
+	mCollector.gauge["MCacheInuse"] = float64(mFromRuntime.MCacheInuse)
+	mCollector.gauge["MCacheSys"] = float64(mFromRuntime.MCacheSys)
+	mCollector.gauge["MSpanInuse"] = float64(mFromRuntime.MSpanInuse)
+	mCollector.gauge["MSpanSys"] = float64(mFromRuntime.MSpanSys)
+	mCollector.gauge["Mallocs"] = float64(mFromRuntime.Mallocs)
+	mCollector.gauge["NextGC"] = float64(mFromRuntime.NextGC)
+	mCollector.gauge["NumForcedGC"] = float64(mFromRuntime.NumForcedGC)
+	mCollector.gauge["NumGC"] = float64(mFromRuntime.NumGC)
+	mCollector.gauge["OtherSys"] = float64(mFromRuntime.OtherSys)
+	mCollector.gauge["PauseTotalNs"] = float64(mFromRuntime.PauseTotalNs)
+	mCollector.gauge["StackInuse"] = float64(mFromRuntime.StackInuse)
+	mCollector.gauge["StackSys"] = float64(mFromRuntime.StackSys)
+	mCollector.gauge["Sys"] = float64(mFromRuntime.Sys)
+	mCollector.gauge["TotalAlloc"] = float64(mFromRuntime.TotalAlloc)
 }
 
-// генерация рандомного значения
-func (mCollector *MetricsCollector) GenerateRandomValue(min int, max int, precision int) float64 {
-	source := rand.NewSource(time.Now().UnixNano())
-	rng := rand.New(source)
-	intPart := rng.Intn(max-min+1) + min
-
-	decimalPart := float64(int(rand.Float64()*float64((precision*10)))) / float64((precision * 10))
-	mixedValue := float64(intPart) + decimalPart
-
-	if mixedValue <= float64(min) || mixedValue >= float64(max) {
-		return float64(intPart)
-	}
-
-	return mixedValue
+func (mCollector *MetricsCollector) ReadMetricsCollector() (map[string]float64, map[string]int) {
+	return mCollector.gauge, mCollector.counter
 }
