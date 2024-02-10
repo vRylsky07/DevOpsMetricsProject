@@ -4,7 +4,6 @@ import "DevOpsMetricsProject/internal/constants"
 
 type StorageInterface interface {
 	InitMemStorage()
-	SetMemStorage(g map[string]float64, c map[string]int)
 	ReadMemStorageFields() (g map[string]float64, c map[string]int)
 	UpdateMetricByName(mType constants.MetricType, mName string, mValue float64)
 	GetMetricByName(mType constants.MetricType, mName string) float64
@@ -14,11 +13,6 @@ type StorageInterface interface {
 type MemStorage struct {
 	gauge   map[string]float64
 	counter map[string]int
-}
-
-func (mStg *MemStorage) SetMemStorage(g map[string]float64, c map[string]int) {
-	mStg.gauge = g
-	mStg.counter = c
 }
 
 func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[string]int) {
