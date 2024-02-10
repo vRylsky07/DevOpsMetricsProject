@@ -6,27 +6,35 @@ import (
 	"time"
 )
 
-// создание экземпляра счетчика
-var PollCount int = 0
+type MetricsCollectorInterface interface {
+	InitMetricsCollector() MetricsCollectorInterface
+	UpdateCounterMetrics() map[string]int
+	UpdateGaugeMetrics() map[string]float64
+	GenerateRandomValue(min int, max int, precision int) float64
+}
 
-// обновление счётчика
-func UpdatePollCounter() int {
-	PollCount++
-	return PollCount
+type MetricsCollector struct {
+	PollCount int
+}
+
+func (mCollector *MetricsCollector) InitMetricsCollector() MetricsCollectorInterface {
+	mCollector.PollCount = 0
+	return mCollector
 }
 
 // сбор всех counter-метрик
-func GetCounterMetrics() map[string]int {
+func (mCollector *MetricsCollector) UpdateCounterMetrics() map[string]int {
 	finalCounterMap := map[string]int{}
-	finalCounterMap["PollCount"] += UpdatePollCounter()
+	mCollector.PollCount++
+	finalCounterMap["PollCount"] += mCollector.PollCount
 	return finalCounterMap
 }
 
 // сбор всех gauge-метрик
-func GetGaugeMetrics() map[string]float64 {
+func (mCollector *MetricsCollector) UpdateGaugeMetrics() map[string]float64 {
 	finalGaugeMap := map[string]float64{}
 
-	finalGaugeMap["RandomValue"] = GenerateRandomValue(-10000, 10000, 3)
+	finalGaugeMap["RandomValue"] = mCollector.GenerateRandomValue(-10000, 10000, 3)
 
 	var mFromRuntime *runtime.MemStats = &runtime.MemStats{}
 	runtime.ReadMemStats(mFromRuntime)
@@ -63,7 +71,7 @@ func GetGaugeMetrics() map[string]float64 {
 }
 
 // генерация рандомного значения
-func GenerateRandomValue(min int, max int, precision int) float64 {
+func (mCollector *MetricsCollector) GenerateRandomValue(min int, max int, precision int) float64 {
 	source := rand.NewSource(time.Now().UnixNano())
 	rng := rand.New(source)
 	intPart := rng.Intn(max-min+1) + min

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"DevOpsMetricsProject/internal/sender"
 	"sync"
 )
 
@@ -13,7 +12,7 @@ func main() {
 func StartAgent() {
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go sender.UpdateMetrics(2)
-	go sender.SendMetricsHTTP(10)
+	//go sender.UpdateMetrics(2)
+	//go sender.SendMetricsHTTP(10)
 	wg.Wait()
 }

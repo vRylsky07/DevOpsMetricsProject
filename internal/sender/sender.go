@@ -1,6 +1,7 @@
 package sender
 
 import (
+	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/metrics"
 	"DevOpsMetricsProject/internal/storage"
 	"fmt"
@@ -9,34 +10,54 @@ import (
 	"time"
 )
 
-var MemStg *storage.MemStorage = storage.CreateMemStorage()
+type SenderInterface interface {
+	InitSenderStorage(newStg storage.StorageInterface) SenderInterface
+	GetStorage() storage.StorageInterface
+	UpdateMetrics(pollInterval int)
+	SendMetricsHTTP(reportInterval int)
+	CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string
+}
+
+type SenderStorage struct {
+	senderMemStorage storage.StorageInterface
+}
+
+func (sStg *SenderStorage) GetStorage() storage.StorageInterface {
+	return sStg.senderMemStorage
+}
+
+func (sStg *SenderStorage) InitSenderStorage(newStg storage.StorageInterface) SenderInterface {
+	sStg.senderMemStorage = newStg
+	return sStg
+}
 
 // обновление метрик
-func UpdateMetrics(pollInterval int) *storage.MemStorage {
+func (sStg *SenderStorage) UpdateMetrics(pollInterval int) {
 
-	if MemStg == nil {
-		MemStg.SetMemStorage(map[string]float64{}, map[string]int{})
+	if sStg == nil {
+		sStg.GetStorage().SetMemStorage(map[string]float64{}, map[string]int{})
 	}
 
 	for {
 		time.Sleep(time.Duration(pollInterval) * time.Second)
-		MemStg.SetMemStorage(metrics.GetGaugeMetrics(), metrics.GetCounterMetrics())
+		sStg.GetStorage().SetMemStorage(metrics.UpdateGaugeMetrics(), metrics.UpdateCounterMetrics())
 	}
 }
 
 // отправка метрик
-func SendMetricsHTTP(reportInterval int) {
+func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) {
+
 	for {
 		time.Sleep(time.Duration(reportInterval) * time.Second)
-		if MemStg == nil {
+		if sStg == nil {
 			return
 		}
 
-		gauge, counter := MemStg.ReadMemStorageFields()
+		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
 
 		for nameGauge, valueGauge := range gauge {
-			finalURL := CreateMetricURL(storage.Gauge, "http://localhost:8080", nameGauge, valueGauge)
-			resp, err := http.Post(CreateMetricURL(storage.Gauge, finalURL, nameGauge, valueGauge), "text/plain", nil)
+			finalURL := sStg.CreateMetricURL(constants.GaugeType, "http://localhost:8080", nameGauge, valueGauge)
+			resp, err := http.Post(sStg.CreateMetricURL(constants.GaugeType, finalURL, nameGauge, valueGauge), "text/plain", nil)
 			if err != nil {
 				fmt.Println("Server is not responding. URL to send was: " + finalURL)
 				continue
@@ -45,7 +66,7 @@ func SendMetricsHTTP(reportInterval int) {
 		}
 
 		for nameCounter, valueCounter := range counter {
-			finalURL := CreateMetricURL(storage.Gauge, "http://localhost:8080", nameCounter, float64(valueCounter))
+			finalURL := sStg.CreateMetricURL(constants.CounterType, "http://localhost:8080", nameCounter, float64(valueCounter))
 			resp, err := http.Post(finalURL, "text/plain", nil)
 			if err != nil {
 				fmt.Println("Server is not responding. URL to send was: " + finalURL)
@@ -57,13 +78,13 @@ func SendMetricsHTTP(reportInterval int) {
 }
 
 // конкатенация URL на основе данных метрики
-func CreateMetricURL(mType storage.MetricType, mainURL string, name string, value float64) string {
+func (sStg *SenderStorage) CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string {
 	mTypeString := ""
 
 	switch mType {
-	case storage.Gauge:
+	case constants.GaugeType:
 		mTypeString = "/gauge/"
-	case storage.Counter:
+	case constants.CounterType:
 		mTypeString = "/counter/"
 	}
 	return mainURL + "/update" + mTypeString + name + "/" + strconv.FormatFloat(value, 'f', 6, 64)

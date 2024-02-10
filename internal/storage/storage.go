@@ -1,13 +1,14 @@
 package storage
 
-// Enum для типа метрики
-type MetricType int
+import "DevOpsMetricsProject/internal/constants"
 
-// константы для проверок типа
-const (
-	Gauge MetricType = iota
-	Counter
-)
+type StorageInterface interface {
+	InitMemStorage() StorageInterface
+	SetMemStorage(g map[string]float64, c map[string]int)
+	ReadMemStorageFields() (g map[string]float64, c map[string]int)
+	UpdateMetricByName(mType constants.MetricType, mName string, mValue float64)
+	GetMetricByName(mType constants.MetricType, mName string) float64
+}
 
 // описание хранилища данных
 type MemStorage struct {
@@ -24,37 +25,37 @@ func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[stri
 	return mStg.gauge, mStg.counter
 }
 
-// инстанциация хранилища
-var mStrg *MemStorage = CreateMemStorage()
+func (mStg *MemStorage) InitMemStorage() StorageInterface {
+	mStg = &MemStorage{map[string]float64{}, map[string]int{}}
+	return mStg
+}
 
-func CreateMemStorage() *MemStorage {
-	return &MemStorage{
-		gauge:   map[string]float64{},
-		counter: map[string]int{},
-	}
+func (mStg *MemStorage) CreateMemStorage() *MemStorage {
+	mStg = &MemStorage{map[string]float64{}, map[string]int{}}
+	return mStg
 }
 
 // обновление метрик с указанием Enum типа
-func (mStr *MemStorage) UpdateMetricByName(mType MetricType, mName string, mValue float64) {
+func (mStg *MemStorage) UpdateMetricByName(mType constants.MetricType, mName string, mValue float64) {
 	switch mType {
-	case Gauge:
-		mStr.gauge[mName] = mValue
-	case Counter:
-		mStr.counter[mName] += int(mValue)
+	case constants.GaugeType:
+		mStg.gauge[mName] = mValue
+	case constants.CounterType:
+		mStg.counter[mName] += int(mValue)
 	}
 }
 
 // геттер метрик по имени
-func (mStr *MemStorage) GetMetricByName(mType MetricType, mName string) float64 {
+func (mStg *MemStorage) GetMetricByName(mType constants.MetricType, mName string) float64 {
 	switch mType {
-	case Gauge:
-		gMetric, wasFound := mStr.gauge[mName]
+	case constants.GaugeType:
+		gMetric, wasFound := mStg.gauge[mName]
 		if !wasFound {
 			return 0.0
 		}
 		return gMetric
-	case Counter:
-		cMetric, wasFound := mStr.counter[mName]
+	case constants.CounterType:
+		cMetric, wasFound := mStg.counter[mName]
 		if !wasFound {
 			return 0.0
 		}
@@ -62,9 +63,4 @@ func (mStr *MemStorage) GetMetricByName(mType MetricType, mName string) float64 
 	default:
 		return 0.0
 	}
-}
-
-// геттер экземпляра хранилища
-func GetMemStorage() *MemStorage {
-	return mStrg
 }
