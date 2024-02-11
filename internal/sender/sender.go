@@ -11,8 +11,15 @@ import (
 	"time"
 )
 
+//go:generate mockgen -source=sender.go -destination=mocks/sender_mocks.go
+type SenderInterface interface {
+	SendMetricsHTTP(reportInterval int)
+	GetStorage() storage.StorageInterface
+}
+
 type SenderStorage struct {
 	senderMemStorage storage.StorageInterface
+	stopThread       bool
 }
 
 func (sStg *SenderStorage) GetStorage() storage.StorageInterface {
@@ -21,6 +28,7 @@ func (sStg *SenderStorage) GetStorage() storage.StorageInterface {
 
 func (sStg *SenderStorage) InitSenderStorage(newStg storage.StorageInterface) {
 	sStg.senderMemStorage = newStg
+	sStg.stopThread = false
 }
 
 // обновление метрик
@@ -30,7 +38,7 @@ func (sStg *SenderStorage) UpdateMetrics(pollInterval int) {
 		sStg.GetStorage().InitMemStorage()
 	}
 
-	for {
+	for !sStg.stopThread {
 		time.Sleep(time.Duration(pollInterval) * time.Second)
 		sStg.updateCounterMetrics()
 		sStg.updateGaugeMetrics()
@@ -40,9 +48,10 @@ func (sStg *SenderStorage) UpdateMetrics(pollInterval int) {
 // отправка метрик
 func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) {
 
-	for {
+	for !sStg.stopThread {
 		time.Sleep(time.Duration(reportInterval) * time.Second)
 		if sStg == nil {
+			fmt.Println("SendMetricsHTTP() FAILED! Storage of sender module is equal nil")
 			return
 		}
 
@@ -70,6 +79,10 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) {
 	}
 }
 
+func (sStg *SenderStorage) StopAgentProcessing() {
+	sStg.stopThread = true
+}
+
 // конкатенация URL на основе данных метрики
 func CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string {
 	mTypeString := ""
@@ -94,6 +107,7 @@ func CreateSender() *SenderStorage {
 }
 
 func (sStg *SenderStorage) updateCounterMetrics() {
+
 	if sStg.GetStorage() == nil {
 		sStg.GetStorage().InitMemStorage()
 	}

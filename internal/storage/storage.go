@@ -4,6 +4,7 @@ import (
 	"DevOpsMetricsProject/internal/constants"
 )
 
+//go:generate mockgen -source=storage.go -destination=mocks/storage_mocks.go
 type StorageInterface interface {
 	InitMemStorage()
 	ReadMemStorageFields() (g map[string]float64, c map[string]int)
@@ -15,10 +16,6 @@ type StorageInterface interface {
 type MemStorage struct {
 	gauge   map[string]float64
 	counter map[string]int
-}
-
-func (mStg *MemStorage) GetGauge() map[string]float64 {
-	return mStg.gauge
 }
 
 func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[string]int) {
