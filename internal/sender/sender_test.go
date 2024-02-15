@@ -93,25 +93,78 @@ func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 }
 
 func TestSenderStorage_CreateMetricURL(t *testing.T) {
+	sStg := &SenderStorage{}
+
 	type args struct {
 		mType   constants.MetricType
 		mainURL string
 		name    string
 		value   float64
 	}
+
 	tests := []struct {
 		name string
-		sStg *SenderStorage
 		args args
 		want string
-	}{
-		// TODO: Add test cases.
+	}{{
+		name: "CreateMetricURL main case(gauge metric type)",
+		args: args{constants.GaugeType, "test.url", "testGauge", 64.51},
+		want: "test.url/update/gauge/testGauge/64.51",
+	}, {
+		name: "CreateMetricURL main case(counter metric type)",
+		args: args{constants.CounterType, "test.url", "testGauge", 37},
+		want: "test.url/update/counter/testGauge/37.00",
+	},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.sStg.CreateMetricURL(tt.args.mType, tt.args.mainURL, tt.args.name, tt.args.value); got != tt.want {
+			if got := sStg.CreateMetricURL(tt.args.mType, tt.args.mainURL, tt.args.name, tt.args.value); got != tt.want {
 				t.Errorf("SenderStorage.CreateMetricURL() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	storageChecker := mock_storage.NewMockStorageInterface(mockCtrl)
+
+	tests := []struct {
+		name   string
+		actual *SenderStorage
+	}{{
+		name:   "updateGaugeMetrics",
+		actual: &SenderStorage{storageChecker, false},
+	},
+	}
+	storageChecker.EXPECT().UpdateMetricByName(constants.GaugeType, gomock.Any(), gomock.Any()).Times(28)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.actual.updateGaugeMetrics()
+		})
+	}
+}
+
+func TestSenderStorage_updateCounterMetrics(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	storageChecker := mock_storage.NewMockStorageInterface(mockCtrl)
+
+	tests := []struct {
+		name   string
+		actual *SenderStorage
+	}{{
+		name:   "updateCounterMetrics",
+		actual: &SenderStorage{storageChecker, false},
+	},
+	}
+	storageChecker.EXPECT().UpdateMetricByName(constants.CounterType, gomock.Any(), gomock.Any()).Times(1)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.actual.updateCounterMetrics()
 		})
 	}
 }
