@@ -81,6 +81,7 @@ func Test_mainPageHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.method, tt.endpoint, nil)
+			defer request.Body.Close()
 			resp := httptest.NewRecorder()
 			MainPageHandler(resp, request)
 			result := resp.Result()

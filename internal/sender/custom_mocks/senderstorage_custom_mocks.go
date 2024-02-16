@@ -1,4 +1,4 @@
-package senderstorage_custom_mocks
+package senderStorageCustomMock
 
 import "DevOpsMetricsProject/internal/constants"
 

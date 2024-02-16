@@ -71,6 +71,7 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 				catchErrs = append(catchErrs, errors.New("Server is not responding. URL to send was: "+finalURL))
 				continue
 			}
+			defer resp.Body.Close()
 			fmt.Println(finalURL, "Gauge update was successful! Status code: ", resp.StatusCode)
 		}
 
@@ -81,6 +82,7 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 				catchErrs = append(catchErrs, errors.New("Server is not responding. URL to send was: "+finalURL))
 				continue
 			}
+			defer resp.Body.Close()
 			fmt.Println(finalURL, " Counter update was successful! Status code: ", resp.StatusCode)
 		}
 		if reportInterval == -1 {
@@ -132,7 +134,7 @@ func (sStg *SenderStorage) updateGaugeMetrics() {
 		sStg.GetStorage().InitMemStorage()
 	}
 
-	var mFromRuntime *runtime.MemStats = &runtime.MemStats{}
+	mFromRuntime := &runtime.MemStats{}
 	runtime.ReadMemStats(mFromRuntime)
 
 	sStg.GetStorage().UpdateMetricByName(constants.GaugeType, "RandomValue", functionslibrary.GenerateRandomValue(-10000, 10000, 3))
