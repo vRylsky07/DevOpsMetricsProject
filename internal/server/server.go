@@ -21,7 +21,7 @@ var dompMux *http.ServeMux
 // инициализация маршрутизатора
 func CoreMuxInit() {
 	dompMux = http.NewServeMux()
-	dompMux.HandleFunc("/update/", mainPage)
+	dompMux.HandleFunc("/update/", MainPageHandler)
 }
 
 // геттер маршрутизатора
@@ -30,32 +30,27 @@ func GetDompMux() *http.ServeMux {
 }
 
 // хэндлер POST-запроса на /update/
-func mainPage(res http.ResponseWriter, req *http.Request) {
-	finalReqStatus := http.StatusBadRequest
+func MainPageHandler(res http.ResponseWriter, req *http.Request) {
 
 	if req.Method == http.MethodPost {
-		/*if isValid := HeadersValidator(&req.Header); !isValid {
-			http.Error(res, "Headers validation FAILED", finalReqStatus)
-			return
-		}
-		*/
-		parsedURL := ParseAndValidateURL(string(req.URL.Path), &finalReqStatus)
+
+		parsedURL, parsedStatus := ParseAndValidateURL(string(req.URL.Path))
 		if parsedURL != nil {
-			res.WriteHeader(finalReqStatus)
+			res.WriteHeader(parsedStatus)
 			res.Write([]byte("Metrics was been updated! Thank you!"))
 			return
 		}
+		http.Error(res, "Your request is incorrect!", parsedStatus)
 	}
-	http.Error(res, "Your request is incorrect!", finalReqStatus)
+	http.Error(res, "Your request is incorrect!", http.StatusBadRequest)
 }
 
 // Разбивка URL-строки и проверка соответствия передаваемых данных
-func ParseAndValidateURL(p string, status *int) []string {
+func ParseAndValidateURL(p string) ([]string, int) {
 	var pathParsed = strings.Split(string(p), "/")
 
 	if len(pathParsed) <= 3 || (len(pathParsed) >= 4 && pathParsed[3] == "") {
-		*status = http.StatusNotFound
-		return nil
+		return nil, http.StatusNotFound
 	}
 
 	if len(pathParsed) == 5 && pathParsed[1] == "update" && (pathParsed[2] == "gauge" || pathParsed[2] == "counter") {
@@ -63,11 +58,10 @@ func ParseAndValidateURL(p string, status *int) []string {
 		_, valueValidate := strconv.ParseFloat(pathParsed[4], 64)
 
 		if valueValidate == nil {
-			*status = http.StatusOK
-			return pathParsed
+			return pathParsed, http.StatusOK
 		}
 	}
-	return nil
+	return nil, http.StatusBadRequest
 }
 
 // валидатор хедера Content-type
