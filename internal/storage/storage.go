@@ -2,6 +2,7 @@ package storage
 
 import (
 	"DevOpsMetricsProject/internal/constants"
+	"errors"
 )
 
 //go:generate mockgen -source=storage.go -destination=mocks/storage_mocks.go
@@ -9,7 +10,7 @@ type StorageInterface interface {
 	InitMemStorage()
 	ReadMemStorageFields() (g map[string]float64, c map[string]int)
 	UpdateMetricByName(mType constants.MetricType, mName string, mValue float64)
-	GetMetricByName(mType constants.MetricType, mName string) float64
+	GetMetricByName(mType constants.MetricType, mName string) (float64, error)
 }
 
 // описание хранилища данных
@@ -38,21 +39,21 @@ func (mStg *MemStorage) UpdateMetricByName(mType constants.MetricType, mName str
 }
 
 // геттер метрик по имени
-func (mStg *MemStorage) GetMetricByName(mType constants.MetricType, mName string) float64 {
+func (mStg *MemStorage) GetMetricByName(mType constants.MetricType, mName string) (float64, error) {
 	switch mType {
 	case constants.GaugeType:
 		gMetric, wasFound := mStg.gauge[mName]
 		if !wasFound {
-			return 0.0
+			return 0.0, errors.New("value was not found")
 		}
-		return gMetric
+		return gMetric, nil
 	case constants.CounterType:
 		cMetric, wasFound := mStg.counter[mName]
 		if !wasFound {
-			return 0.0
+			return 0.0, errors.New("value was not found")
 		}
-		return float64(cMetric)
+		return float64(cMetric), nil
 	default:
-		return 0.0
+		return 0.0, errors.New("value was not found")
 	}
 }

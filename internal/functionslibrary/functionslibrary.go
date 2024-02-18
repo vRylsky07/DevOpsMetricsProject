@@ -1,6 +1,7 @@
 package functionslibrary
 
 import (
+	"DevOpsMetricsProject/internal/constants"
 	"math/rand"
 	"time"
 )
@@ -19,4 +20,15 @@ func GenerateRandomValue(min int, max int, precision int) float64 {
 	}
 
 	return mixedValue
+}
+
+func ConvertStringToMetricType(str string) constants.MetricType {
+	switch str {
+	case "gauge":
+		return constants.GaugeType
+	case "counter":
+		return constants.CounterType
+	default:
+		return -1
+	}
 }

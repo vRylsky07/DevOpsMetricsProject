@@ -35,11 +35,12 @@ func (m *MockStorageInterface) EXPECT() *MockStorageInterfaceMockRecorder {
 }
 
 // GetMetricByName mocks base method.
-func (m *MockStorageInterface) GetMetricByName(mType constants.MetricType, mName string) float64 {
+func (m *MockStorageInterface) GetMetricByName(mType constants.MetricType, mName string) (float64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMetricByName", mType, mName)
 	ret0, _ := ret[0].(float64)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetMetricByName indicates an expected call of GetMetricByName.
