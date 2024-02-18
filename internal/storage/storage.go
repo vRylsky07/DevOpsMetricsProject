@@ -3,7 +3,6 @@ package storage
 import (
 	"DevOpsMetricsProject/internal/constants"
 	"errors"
-	"fmt"
 	"sort"
 )
 
@@ -44,7 +43,6 @@ func (mStg *MemStorage) UpdateMetricByName(oper constants.UpdateOperation, mType
 			mStg.counter[mName] = 0
 		}
 		mStg.counter[mName] += int(mValue)
-		fmt.Println("COUNTER: ", mStg.counter[mName])
 	}
 }
 

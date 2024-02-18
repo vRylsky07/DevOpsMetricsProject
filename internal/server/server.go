@@ -107,16 +107,16 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 	}
 
 	if serv == nil {
-		http.Error(res, "ERROR! Server not working fine please check its initialization! Serv.coreMux", http.StatusBadRequest)
+		http.Error(res, "ERROR! Server not working fine please check its initialization! Serv.coreMux is nil", http.StatusBadRequest)
 	}
 
 	if serv == nil {
-		http.Error(res, "ERROR! Server not working fine please check its initialization! Serv.coreStg == nil", http.StatusBadRequest)
+		http.Error(res, "ERROR! Server not working fine please check its initialization! Serv.coreStg is nil", http.StatusBadRequest)
 	}
 
 	mTypeConst := functionslibrary.ConvertStringToMetricType(mType)
 
-	if mTypeConst == -1 {
+	if mTypeConst == constants.NoneType {
 		http.Error(res, "Your request is incorrect! Metric type conversion failed!", http.StatusBadRequest)
 		return
 	}
@@ -125,11 +125,7 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 
 	if gettingValueError == nil {
 		res.WriteHeader(http.StatusOK)
-		decimal := 0
-		if mTypeConst == constants.GaugeType {
-			decimal = 3
-		}
-		res.Write([]byte(strconv.FormatFloat(valueToReturn, 'f', decimal, 64)))
+		res.Write([]byte(strconv.FormatFloat(valueToReturn, 'f', functionslibrary.GetMetricDecimalAsInt(mTypeConst), 64)))
 		return
 	} else {
 		http.Error(res, "This metric does not exist or was not been updated yet", http.StatusNotFound)
@@ -151,19 +147,17 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 
 	mTypeConst := functionslibrary.ConvertStringToMetricType(mType)
 
-	if mTypeConst == -1 {
-		http.Error(res, "Your request is incorrect! Metric type conversion failed!", http.StatusBadRequest)
-		return
-	}
-
 	valueInFloat, err := strconv.ParseFloat(mValue, 64)
 
 	if (mType == "gauge" || mType == "counter") && err == nil {
-		operType := constants.RenewOperation
-		if mTypeConst == constants.CounterType {
-			operType = constants.AddOperation
+
+		switch mTypeConst {
+		case constants.GaugeType:
+			serv.coreStg.UpdateMetricByName(constants.RenewOperation, mTypeConst, mName, valueInFloat)
+		case constants.CounterType:
+			serv.coreStg.UpdateMetricByName(constants.AddOperation, mTypeConst, mName, valueInFloat)
 		}
-		serv.coreStg.UpdateMetricByName(operType, mTypeConst, mName, valueInFloat)
+
 		res.WriteHeader(http.StatusOK)
 		res.Write([]byte("Metrics was been updated! Thank you!"))
 		return

@@ -29,6 +29,16 @@ func ConvertStringToMetricType(str string) constants.MetricType {
 	case "counter":
 		return constants.CounterType
 	default:
-		return -1
+		return constants.NoneType
 	}
+}
+
+func GetMetricDecimalAsInt(mType constants.MetricType) int {
+	switch mType {
+	case constants.GaugeType:
+		return constants.GaugeDecimal
+	case constants.CounterType:
+		return constants.CounterDecimal
+	}
+	return constants.NoneTypeDecimal
 }

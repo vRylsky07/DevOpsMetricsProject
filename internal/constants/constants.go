@@ -7,6 +7,7 @@ type MetricType int
 const (
 	GaugeType MetricType = iota
 	CounterType
+	NoneType
 )
 
 type UpdateOperation int
@@ -14,4 +15,12 @@ type UpdateOperation int
 const (
 	AddOperation UpdateOperation = iota
 	RenewOperation
+)
+
+type DecimalCount int
+
+const (
+	CounterDecimal  = 0
+	GaugeDecimal    = 3
+	NoneTypeDecimal = 0
 )
