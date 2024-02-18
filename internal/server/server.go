@@ -159,7 +159,7 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 	valueInFloat, err := strconv.ParseFloat(mValue, 64)
 
 	if (mType == "gauge" || mType == "counter") && err == nil {
-		serv.coreStg.UpdateMetricByName(constants.RenewOperation, mTypeConst, mName, valueInFloat)
+		serv.coreStg.UpdateMetricByName(constants.AddOperation, mTypeConst, mName, valueInFloat)
 		res.WriteHeader(http.StatusOK)
 		res.Write([]byte("Metrics was been updated! Thank you!"))
 		return
