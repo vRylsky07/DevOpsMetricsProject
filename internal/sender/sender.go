@@ -106,7 +106,7 @@ func (sStg *SenderStorage) CreateMetricURL(mType constants.MetricType, mainURL s
 	case constants.CounterType:
 		mTypeString = "/counter/"
 	}
-	return mainURL + "/update" + mTypeString + name + "/" + strconv.FormatFloat(value, 'f', 2, 64)
+	return mainURL + "/update" + mTypeString + name + "/" + strconv.FormatFloat(value, 'f', 3, 64)
 }
 
 func CreateSender() *SenderStorage {
