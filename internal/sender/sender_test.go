@@ -151,10 +151,10 @@ func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			errs := tt.sStg.SendMetricsHTTP(-1)
 
-			//g, c := tt.sStg.GetStorage().ReadMemStorageFields()
-			//if len(errs) != (len(g) + len(c)) {
-			//t.Errorf("Send metrics to server HTTP FAILED!")
-			//}
+			g, c := tt.sStg.GetStorage().ReadMemStorageFields()
+			if len(errs) != (len(g) + len(c)) {
+				t.Errorf("Send metrics to server HTTP FAILED!")
+			}
 
 			var isWantedErr bool
 			for _, err := range errs {
@@ -164,7 +164,7 @@ func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 				}
 			}
 
-			//assert.True(t, isWantedErr)
+			assert.True(t, isWantedErr)
 		})
 	}
 }
