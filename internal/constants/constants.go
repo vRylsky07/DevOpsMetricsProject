@@ -8,3 +8,10 @@ const (
 	GaugeType MetricType = iota
 	CounterType
 )
+
+type UpdateOperation int
+
+const (
+	AddOperation UpdateOperation = iota
+	RenewOperation
+)

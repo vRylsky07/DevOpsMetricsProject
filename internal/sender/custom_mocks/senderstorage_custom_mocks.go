@@ -12,8 +12,9 @@ func (ssm *SenderStorageMock) ReadMemStorageFields() (g map[string]float64, c ma
 	return ssm.Gauge, ssm.Counter
 }
 
-func (ssm *SenderStorageMock) UpdateMetricByName(mType constants.MetricType, mName string, mValue float64) {
+func (ssm *SenderStorageMock) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) {
 }
+
 func (ssm *SenderStorageMock) GetMetricByName(mType constants.MetricType, mName string) (float64, error) {
 	return 0, nil
 }

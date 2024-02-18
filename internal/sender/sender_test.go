@@ -47,7 +47,7 @@ func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
 		actual: &SenderStorage{storageChecker, false},
 	},
 	}
-	storageChecker.EXPECT().UpdateMetricByName(constants.GaugeType, gomock.Any(), gomock.Any()).Times(28)
+	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.GaugeType, gomock.Any(), gomock.Any()).Times(28)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestSenderStorage_updateCounterMetrics(t *testing.T) {
 		actual: &SenderStorage{storageChecker, false},
 	},
 	}
-	storageChecker.EXPECT().UpdateMetricByName(constants.CounterType, gomock.Any(), gomock.Any()).Times(1)
+	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.CounterType, gomock.Any(), gomock.Any()).Times(1)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -91,8 +91,8 @@ func TestSenderStorage_UpdateMetrics(t *testing.T) {
 		actual: &SenderStorage{storageChecker, false},
 	},
 	}
-	storageChecker.EXPECT().UpdateMetricByName(constants.GaugeType, gomock.Any(), gomock.Any()).AnyTimes()
-	storageChecker.EXPECT().UpdateMetricByName(constants.CounterType, gomock.Any(), gomock.Any()).AnyTimes().Return()
+	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.GaugeType, gomock.Any(), gomock.Any()).AnyTimes()
+	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.CounterType, gomock.Any(), gomock.Any()).AnyTimes().Return()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.actual.UpdateMetrics(-1)

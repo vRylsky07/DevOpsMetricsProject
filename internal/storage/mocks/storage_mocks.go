@@ -77,13 +77,13 @@ func (mr *MockStorageInterfaceMockRecorder) ReadMemStorageFields() *gomock.Call 
 }
 
 // UpdateMetricByName mocks base method.
-func (m *MockStorageInterface) UpdateMetricByName(mType constants.MetricType, mName string, mValue float64) {
+func (m *MockStorageInterface) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "UpdateMetricByName", mType, mName, mValue)
+	m.ctrl.Call(m, "UpdateMetricByName", oper, mType, mName, mValue)
 }
 
 // UpdateMetricByName indicates an expected call of UpdateMetricByName.
-func (mr *MockStorageInterfaceMockRecorder) UpdateMetricByName(mType, mName, mValue interface{}) *gomock.Call {
+func (mr *MockStorageInterfaceMockRecorder) UpdateMetricByName(oper, mType, mName, mValue interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMetricByName", reflect.TypeOf((*MockStorageInterface)(nil).UpdateMetricByName), mType, mName, mValue)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMetricByName", reflect.TypeOf((*MockStorageInterface)(nil).UpdateMetricByName), oper, mType, mName, mValue)
 }

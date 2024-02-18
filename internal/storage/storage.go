@@ -3,13 +3,15 @@ package storage
 import (
 	"DevOpsMetricsProject/internal/constants"
 	"errors"
+	"fmt"
+	"sort"
 )
 
 //go:generate mockgen -source=storage.go -destination=mocks/storage_mocks.go
 type StorageInterface interface {
 	InitMemStorage()
 	ReadMemStorageFields() (g map[string]float64, c map[string]int)
-	UpdateMetricByName(mType constants.MetricType, mName string, mValue float64)
+	UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64)
 	GetMetricByName(mType constants.MetricType, mName string) (float64, error)
 }
 
@@ -28,13 +30,21 @@ func (mStg *MemStorage) InitMemStorage() {
 }
 
 // обновление метрик с указанием Enum типа
-func (mStg *MemStorage) UpdateMetricByName(mType constants.MetricType, mName string, mValue float64) {
+func (mStg *MemStorage) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) {
 
 	switch mType {
 	case constants.GaugeType:
-		mStg.gauge[mName] = mValue
+		if oper == constants.RenewOperation {
+			mStg.gauge[mName] = 0
+		}
+		mStg.gauge[mName] += mValue
+
 	case constants.CounterType:
+		if oper == constants.RenewOperation {
+			mStg.counter[mName] = 0
+		}
 		mStg.counter[mName] += int(mValue)
+		fmt.Println("COUNTER: ", mStg.counter[mName])
 	}
 }
 
@@ -56,4 +66,27 @@ func (mStg *MemStorage) GetMetricByName(mType constants.MetricType, mName string
 	default:
 		return 0.0, errors.New("value was not found")
 	}
+}
+
+func (mStg *MemStorage) GetSortedKeysArray() (*[]string, *[]string) {
+	sortedGauge := []string{}
+	sortedCounter := []string{}
+
+	for key := range mStg.gauge {
+		sortedGauge = append(sortedGauge, key)
+	}
+
+	for key := range mStg.counter {
+		sortedCounter = append(sortedCounter, key)
+	}
+
+	sort.Slice(sortedGauge, func(i, j int) bool {
+		return sortedGauge[i] < sortedGauge[j]
+	})
+
+	sort.Slice(sortedCounter, func(i, j int) bool {
+		return sortedCounter[i] < sortedCounter[j]
+	})
+
+	return &sortedGauge, &sortedCounter
 }
