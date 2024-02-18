@@ -127,7 +127,7 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 		res.WriteHeader(http.StatusOK)
 		decimal := 0
 		if mTypeConst == constants.GaugeType {
-			decimal = 2
+			decimal = 3
 		}
 		res.Write([]byte(strconv.FormatFloat(valueToReturn, 'f', decimal, 64)))
 		return
