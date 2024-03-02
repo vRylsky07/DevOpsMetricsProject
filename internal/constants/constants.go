@@ -21,6 +21,6 @@ type DecimalCount int
 
 const (
 	CounterDecimal  = 0
-	GaugeDecimal    = 2
+	GaugeDecimal    = 3
 	NoneTypeDecimal = 0
 )
