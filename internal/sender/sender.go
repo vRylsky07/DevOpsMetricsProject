@@ -22,15 +22,21 @@ type SenderInterface interface {
 type SenderStorage struct {
 	senderMemStorage storage.StorageInterface
 	stopThread       bool
+	address          string
 }
 
 func (sStg *SenderStorage) GetStorage() storage.StorageInterface {
 	return sStg.senderMemStorage
 }
 
+func (sStg *SenderStorage) SetURL(address string) {
+	sStg.address = address
+}
+
 func (sStg *SenderStorage) InitSenderStorage(newStg storage.StorageInterface) {
 	sStg.senderMemStorage = newStg
 	sStg.stopThread = false
+	sStg.address = "http://localhost:8080"
 }
 
 // обновление метрик
@@ -65,7 +71,7 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
 
 		for nameGauge, valueGauge := range gauge {
-			finalURL := sStg.CreateMetricURL(constants.GaugeType, "http://localhost:8080", nameGauge, valueGauge)
+			finalURL := sStg.CreateMetricURL(constants.GaugeType, sStg.address, nameGauge, valueGauge)
 			resp, err := http.Post(finalURL, "text/plain", nil)
 			if err != nil {
 				catchErrs = append(catchErrs, errors.New("Server is not responding. URL to send was: "+finalURL))
@@ -76,7 +82,7 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 		}
 
 		for nameCounter, valueCounter := range counter {
-			finalURL := sStg.CreateMetricURL(constants.CounterType, "http://localhost:8080", nameCounter, float64(valueCounter))
+			finalURL := sStg.CreateMetricURL(constants.CounterType, sStg.address, nameCounter, float64(valueCounter))
 			resp, err := http.Post(finalURL, "text/plain", nil)
 			if err != nil {
 				catchErrs = append(catchErrs, errors.New("Server is not responding. URL to send was: "+finalURL))

@@ -2,8 +2,12 @@ package main
 
 import (
 	"DevOpsMetricsProject/internal/server"
+	"flag"
 )
 
 func main() {
-	server.StartServerOnPort(":8080")
+	address := flag.String("a", "localhost:8080", "input endpoint address")
+	flag.Parse()
+
+	server.StartServerOnPort(*address)
 }
