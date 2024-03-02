@@ -72,7 +72,7 @@ func (serv *dompserver) GetMainPageHandler(res http.ResponseWriter, req *http.Re
 	for _, key := range *gSortedNames {
 		value, errBool := g[key]
 		if errBool {
-			htmlMiddlePart += key + " " + strconv.FormatFloat(value, 'f', constants.GaugeDecimal, 64) + "<br>"
+			htmlMiddlePart += key + " " + strconv.FormatFloat(value, 'f', -1, 64) + "<br>"
 		}
 	}
 
