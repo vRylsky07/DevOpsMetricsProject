@@ -117,11 +117,11 @@ func TestSenderStorage_CreateMetricURL(t *testing.T) {
 	}{{
 		name: "CreateMetricURL main case(gauge metric type)",
 		args: args{constants.GaugeType, "test.url", "testGauge", 64.51},
-		want: "test.url/update/gauge/testGauge/64.510",
+		want: "http://test.url/update/gauge/testGauge/64.510",
 	}, {
 		name: "CreateMetricURL main case(counter metric type)",
 		args: args{constants.CounterType, "test.url", "testGauge", 37},
-		want: "test.url/update/counter/testGauge/37.000",
+		want: "http://test.url/update/counter/testGauge/37.000",
 	},
 	}
 	for _, tt := range tests {
