@@ -125,7 +125,7 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 
 	if gettingValueError == nil {
 		res.WriteHeader(http.StatusOK)
-		res.Write([]byte(strconv.FormatFloat(valueToReturn, 'f', functionslibrary.GetMetricDecimalAsInt(mTypeConst), 64)))
+		res.Write([]byte(strconv.FormatFloat(valueToReturn, 'f', -1, 64)))
 		return
 	} else {
 		http.Error(res, "This metric does not exist or was not been updated yet", http.StatusNotFound)
