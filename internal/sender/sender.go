@@ -29,7 +29,7 @@ func (sStg *SenderStorage) GetStorage() storage.StorageInterface {
 	return sStg.senderMemStorage
 }
 
-func (sStg *SenderStorage) SetURL(address string) {
+func (sStg *SenderStorage) SetDomainURL(address string) {
 	sStg.address = address
 }
 
@@ -39,7 +39,6 @@ func (sStg *SenderStorage) InitSenderStorage(newStg storage.StorageInterface) {
 	sStg.address = "http://localhost:8080"
 }
 
-// обновление метрик
 func (sStg *SenderStorage) UpdateMetrics(pollInterval int) {
 
 	if sStg.GetStorage() == nil {
@@ -56,7 +55,6 @@ func (sStg *SenderStorage) UpdateMetrics(pollInterval int) {
 	}
 }
 
-// отправка метрик
 func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 
 	var catchErrs []error
@@ -102,7 +100,6 @@ func (sStg *SenderStorage) StopAgentProcessing() {
 	sStg.stopThread = true
 }
 
-// конкатенация URL на основе данных метрики
 func (sStg *SenderStorage) CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string {
 	mTypeString := ""
 

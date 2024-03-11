@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// генерация рандомного флоата64 в заданых границах
 func GenerateRandomValue(min int, max int, precision int) float64 {
 	source := rand.NewSource(time.Now().UnixNano())
 	rng := rand.New(source)

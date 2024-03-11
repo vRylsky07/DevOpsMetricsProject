@@ -1,6 +1,7 @@
 package server
 
 import (
+	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/storage"
@@ -16,19 +17,19 @@ type dompserver struct {
 	coreStg *storage.MemStorage
 }
 
-// главная функция запуска и инициализации сервера
-func StartServerOnPort(port string) {
+func StartServerOnPort() {
+	cfg := configs.CreateServerConfig()
+
 	dompserv := CreateNewServer()
 	if dompserv.coreMux == nil || dompserv.coreStg == nil {
 		return
 	}
-	err := http.ListenAndServe(port, dompserv.coreMux)
+	err := http.ListenAndServe(cfg.Address, dompserv.coreMux)
 	if err != nil {
 		panic(err)
 	}
 }
 
-// создание и настройка нового маршрутизатора
 func CreateNewServer() *dompserver {
 	coreMux := chi.NewRouter()
 	coreStg := &storage.MemStorage{}
@@ -133,7 +134,6 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 	}
 }
 
-// хэндлер POST-запроса на /update/
 func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.Request) {
 
 	mType := chi.URLParam(req, "mType")

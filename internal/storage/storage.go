@@ -14,7 +14,6 @@ type StorageInterface interface {
 	GetMetricByName(mType constants.MetricType, mName string) (float64, error)
 }
 
-// описание хранилища данных
 type MemStorage struct {
 	gauge   map[string]float64
 	counter map[string]int
@@ -28,7 +27,6 @@ func (mStg *MemStorage) InitMemStorage() {
 	mStg.gauge, mStg.counter = map[string]float64{}, map[string]int{}
 }
 
-// обновление метрик с указанием Enum типа
 func (mStg *MemStorage) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) {
 
 	switch mType {
@@ -46,7 +44,6 @@ func (mStg *MemStorage) UpdateMetricByName(oper constants.UpdateOperation, mType
 	}
 }
 
-// геттер метрик по имени
 func (mStg *MemStorage) GetMetricByName(mType constants.MetricType, mName string) (float64, error) {
 	switch mType {
 	case constants.GaugeType:
