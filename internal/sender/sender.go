@@ -35,7 +35,6 @@ func (sStg *SenderStorage) SetDomainURL(address string) {
 
 func (sStg *SenderStorage) InitSenderStorage(newStg storage.StorageInterface) {
 	sStg.senderMemStorage = newStg
-	sStg.stopThread = false
 	sStg.address = "http://localhost:8080"
 }
 
