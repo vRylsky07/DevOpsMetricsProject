@@ -3,7 +3,6 @@ package storage
 import (
 	"DevOpsMetricsProject/internal/constants"
 	"errors"
-	"sort"
 	"sync"
 )
 
@@ -84,27 +83,4 @@ func (mStg *MemStorage) GetMetricByName(mType constants.MetricType, mName string
 	default:
 		return 0.0, errors.New("value was not found")
 	}
-}
-
-func (mStg *MemStorage) GetSortedKeysArray() (*[]string, *[]string) {
-	sortedGauge := []string{}
-	sortedCounter := []string{}
-
-	for key := range mStg.gauge {
-		sortedGauge = append(sortedGauge, key)
-	}
-
-	for key := range mStg.counter {
-		sortedCounter = append(sortedCounter, key)
-	}
-
-	sort.Slice(sortedGauge, func(i, j int) bool {
-		return sortedGauge[i] < sortedGauge[j]
-	})
-
-	sort.Slice(sortedCounter, func(i, j int) bool {
-		return sortedCounter[i] < sortedCounter[j]
-	})
-
-	return &sortedGauge, &sortedCounter
 }

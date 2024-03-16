@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	agent.StartAgent()
+	agent.Start()
 }

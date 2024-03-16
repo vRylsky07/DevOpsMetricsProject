@@ -7,17 +7,19 @@ import (
 	"DevOpsMetricsProject/internal/storage"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/go-chi/chi"
+	"golang.org/x/exp/maps"
 )
 
 type dompserver struct {
 	coreMux *chi.Mux
-	coreStg *storage.MemStorage
+	coreStg storage.StorageInterface
 }
 
-func StartServerOnPort() {
+func Start() {
 	cfg := configs.CreateServerConfig()
 
 	dompserv := CreateNewServer()
@@ -68,16 +70,25 @@ func (serv *dompserver) GetMainPageHandler(res http.ResponseWriter, req *http.Re
 	htmlMiddlePart := ``
 
 	g, c := serv.coreStg.ReadMemStorageFields()
-	gSortedNames, cSortedNames := serv.coreStg.GetSortedKeysArray()
 
-	for _, key := range *gSortedNames {
+	gSortedNames := maps.Keys(g)
+	sort.Slice(gSortedNames, func(i, j int) bool {
+		return gSortedNames[i] < gSortedNames[j]
+	})
+
+	cSortedNames := maps.Keys(c)
+	sort.Slice(cSortedNames, func(i, j int) bool {
+		return cSortedNames[i] < cSortedNames[j]
+	})
+
+	for _, key := range gSortedNames {
 		value, errBool := g[key]
 		if errBool {
 			htmlMiddlePart += key + " " + strconv.FormatFloat(value, 'f', -1, 64) + "<br>"
 		}
 	}
 
-	for _, key := range *cSortedNames {
+	for _, key := range cSortedNames {
 		value, errBool := c[key]
 		if errBool {
 			htmlMiddlePart += key + " " + strconv.Itoa(value) + "<br>"

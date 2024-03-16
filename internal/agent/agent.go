@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-func StartAgent() {
+func Start() {
 	cfg := configs.CreateClientConfig()
 
 	mSender := sender.CreateSender()

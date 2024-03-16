@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	server.StartServerOnPort()
+	server.Start()
 }
