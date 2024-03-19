@@ -18,5 +18,6 @@ func Start() {
 	wg.Add(2)
 	go mSender.UpdateMetrics(cfg.PollInterval)
 	go mSender.SendMetricsHTTP(cfg.ReportInterval)
+	logger.Log.Info("Agent was successfully started!")
 	wg.Wait()
 }
