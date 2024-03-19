@@ -1,0 +1,11 @@
+2024-03-17T23:36:46.838+0300	INFO	logger/logger.go:29	WASSAP NIGGA
+2024-03-17T23:39:28.240+0300	INFO	logger/logger.go:29	The Logger was successfully initialized
+2024-03-17T23:55:33.222+0300	INFO	logger/logger.go:29	The Logger was successfully initialized
+2024-03-17T23:55:41.254+0300	INFO	server/server.go:203	TEST LOG MIDDLEWARE	{"uri": "/", "method": "GET", "time": "0s"}
+2024-03-17T23:55:42.081+0300	INFO	server/server.go:203	TEST LOG MIDDLEWARE	{"uri": "/", "method": "GET", "time": "0s"}
+2024-03-17T23:55:42.220+0300	INFO	server/server.go:203	TEST LOG MIDDLEWARE	{"uri": "/favicon.ico", "method": "GET", "time": "0s"}
+2024-03-17T23:56:43.734+0300	INFO	server/server.go:203	TEST LOG MIDDLEWARE	{"uri": "/", "method": "GET", "time": "0s"}
+2024-03-17T23:56:49.174+0300	INFO	server/server.go:203	TEST LOG MIDDLEWARE	{"uri": "/", "method": "GET", "time": "0s"}
+2024-03-17T23:56:57.627+0300	INFO	server/server.go:203	TEST LOG MIDDLEWARE	{"uri": "/", "method": "GET", "time": "0s"}
+2024-03-18T00:20:04.530+0300	INFO	logger/logger.go:29	The Logger was successfully initialized
+2024-03-18T00:20:10.274+0300	INFO	server/server.go:204	TEST LOG MIDDLEWARE	{"uri": "/", "method": "GET", "time": "2.008148s"}

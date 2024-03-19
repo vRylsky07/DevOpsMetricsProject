@@ -4,13 +4,16 @@ import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/functionslibrary"
+	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
 	"io"
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi"
+	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 )
 
@@ -21,7 +24,7 @@ type dompserver struct {
 
 func Start() {
 	cfg := configs.CreateServerConfig()
-
+	logger.Initialize(cfg.Loglevel)
 	dompserv := CreateNewServer()
 	if dompserv.coreMux == nil || dompserv.coreStg == nil {
 		return
@@ -38,6 +41,7 @@ func CreateNewServer() *dompserver {
 	coreStg.InitMemStorage()
 	dompserv := &dompserver{coreMux: coreMux, coreStg: coreStg}
 
+	coreMux.Use(WithLogging)
 	coreMux.Get("/", dompserv.GetMainPageHandler)
 	coreMux.Route("/update", func(r chi.Router) {
 		r.Post("/{mType}/{mName}/{mValue}", dompserv.UpdateMetricHandler)
@@ -175,4 +179,21 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 	}
 
 	http.Error(res, "Your request is incorrect!", http.StatusBadRequest)
+}
+
+func WithLogging(h http.Handler) http.Handler {
+	logFn := func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		uri := r.RequestURI
+		method := r.Method
+
+		h.ServeHTTP(w, r)
+
+		duration := time.Since(start)
+
+		logger.Log.Info("TEST LOG MIDDLEWARE", zap.String("uri", uri), zap.String("method", method), zap.Duration("time", duration))
+
+	}
+	return http.HandlerFunc(logFn)
 }
