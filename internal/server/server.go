@@ -4,13 +4,15 @@ import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/functionslibrary"
+	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
-	"io"
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi"
+	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 )
 
@@ -21,11 +23,13 @@ type dompserver struct {
 
 func Start() {
 	cfg := configs.CreateServerConfig()
-
+	logger.Initialize(cfg.Loglevel)
 	dompserv := CreateNewServer()
 	if dompserv.coreMux == nil || dompserv.coreStg == nil {
+		logger.Log.Info("Server initialization failed!", zap.Bool("coreMux", (dompserv.coreMux == nil)), zap.Bool("coreStg", (dompserv.coreStg == nil)))
 		return
 	}
+	logger.Log.Info("Server was successfully initialized!")
 	err := http.ListenAndServe(cfg.Address, dompserv.coreMux)
 	if err != nil {
 		panic(err)
@@ -38,6 +42,8 @@ func CreateNewServer() *dompserver {
 	coreStg.InitMemStorage()
 	dompserv := &dompserver{coreMux: coreMux, coreStg: coreStg}
 
+	coreMux.Use(WithRequestLog)
+	coreMux.Use(WithResponseLog)
 	coreMux.Get("/", dompserv.GetMainPageHandler)
 	coreMux.Route("/update", func(r chi.Router) {
 		r.Post("/{mType}/{mName}/{mValue}", dompserv.UpdateMetricHandler)
@@ -101,8 +107,7 @@ func (serv *dompserver) GetMainPageHandler(res http.ResponseWriter, req *http.Re
 
 	htmlFinal := htmlTopPart + htmlMiddlePart + htmlBottomPart
 
-	io.WriteString(res, htmlFinal)
-
+	res.Write([]byte(htmlFinal))
 }
 
 func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Request) {
@@ -175,4 +180,49 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 	}
 
 	http.Error(res, "Your request is incorrect!", http.StatusBadRequest)
+}
+
+func WithRequestLog(h http.Handler) http.Handler {
+	logFn := func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		uri := r.RequestURI
+		method := r.Method
+
+		h.ServeHTTP(w, r)
+
+		duration := time.Since(start)
+
+		logger.Log.Info("Server got HTTP-request", zap.String("uri", uri), zap.String("method", method), zap.Duration("time", duration))
+
+	}
+	return http.HandlerFunc(logFn)
+}
+
+func WithResponseLog(h http.Handler) http.Handler {
+	logFn := func(w http.ResponseWriter, r *http.Request) {
+		rlw := &ResponceLogWriter{w, 0, 0}
+		h.ServeHTTP(rlw, r)
+
+		logger.Log.Info("Server responsing", zap.Int("status", rlw.statusCode), zap.Int("size", rlw.size))
+	}
+
+	return http.HandlerFunc(logFn)
+}
+
+type ResponceLogWriter struct {
+	http.ResponseWriter
+	statusCode int
+	size       int
+}
+
+func (rlw *ResponceLogWriter) Write(b []byte) (int, error) {
+	size, err := rlw.ResponseWriter.Write(b)
+	rlw.size = size
+	return size, err
+}
+
+func (rlw *ResponceLogWriter) WriteHeader(statusCode int) {
+	rlw.ResponseWriter.WriteHeader(statusCode)
+	rlw.statusCode = statusCode
 }
