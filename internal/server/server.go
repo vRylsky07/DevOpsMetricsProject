@@ -107,6 +107,7 @@ func (serv *dompserver) GetMainPageHandler(res http.ResponseWriter, req *http.Re
 
 	htmlFinal := htmlTopPart + htmlMiddlePart + htmlBottomPart
 
+	res.WriteHeader(http.StatusOK)
 	res.Write([]byte(htmlFinal))
 }
 
@@ -121,14 +122,17 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 
 	if serv == nil {
 		http.Error(res, "ERROR! Server not working fine please check its initialization! Server is nil", http.StatusBadRequest)
+		return
 	}
 
-	if serv == nil {
+	if serv.coreMux == nil {
 		http.Error(res, "ERROR! Server not working fine please check its initialization! Serv.coreMux is nil", http.StatusBadRequest)
+		return
 	}
 
-	if serv == nil {
+	if serv.coreStg == nil {
 		http.Error(res, "ERROR! Server not working fine please check its initialization! Serv.coreStg is nil", http.StatusBadRequest)
+		return
 	}
 
 	mTypeConst := functionslibrary.ConvertStringToMetricType(mType)

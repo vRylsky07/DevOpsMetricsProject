@@ -1,6 +1,11 @@
 package logger
 
-import "go.uber.org/zap"
+import (
+	"os"
+	"path/filepath"
+
+	"go.uber.org/zap"
+)
 
 var Log *zap.Logger = zap.NewNop()
 
@@ -13,7 +18,13 @@ func Initialize(level string) error {
 
 	cfg := zap.NewDevelopmentConfig()
 	cfg.Level = lvl
-	cfg.OutputPaths = []string{"./logs/domp.log", "stderr"}
+
+	outputPath := filepath.Join(".", "logs")
+	os.MkdirAll(outputPath, os.ModePerm)
+
+	outputPath = filepath.Join(outputPath, "domp.log")
+
+	cfg.OutputPaths = []string{outputPath, "stderr"}
 
 	zl, err := cfg.Build()
 	if err != nil {
