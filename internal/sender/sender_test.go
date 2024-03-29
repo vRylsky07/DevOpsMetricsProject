@@ -2,7 +2,7 @@ package sender
 
 import (
 	"DevOpsMetricsProject/internal/constants"
-	senderstorage_custom_mocks "DevOpsMetricsProject/internal/sender/custom_mocks"
+	storage_custom_mocks "DevOpsMetricsProject/internal/storage/custom_mock"
 	mock_storage "DevOpsMetricsProject/internal/storage/mocks"
 	"fmt"
 	"strings"
@@ -136,7 +136,8 @@ func TestSenderStorage_CreateMetricURL(t *testing.T) {
 func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 	g := map[string]float64{"testGauge": 1}
 	c := map[string]int{"testCounter": 2}
-	testingStorage := &senderstorage_custom_mocks.SenderStorageMock{Gauge: g, Counter: c}
+
+	testingStorage := &storage_custom_mocks.StorageMockCustom{Gauge: g, Counter: c}
 
 	tests := []struct {
 		name string

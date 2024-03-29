@@ -1,7 +1,7 @@
 package server
 
 import (
-	"DevOpsMetricsProject/internal/constants"
+	storage_custom_mocks "DevOpsMetricsProject/internal/storage/custom_mock"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -113,8 +113,12 @@ func Test_dompserver_GetMetricHandler(t *testing.T) {
 	}
 
 	testServ := CreateNewServer()
-	testServ.coreStg.UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "testName", 55.5)
-	testServ.coreStg.UpdateMetricByName(constants.RenewOperation, constants.CounterType, "testName", 55)
+
+	g := map[string]float64{"testGauge": 55.5}
+	c := map[string]int{"testCounter": 55}
+
+	testingStorage := &storage_custom_mocks.StorageMockCustom{Gauge: g, Counter: c}
+	testServ.coreStg = testingStorage
 
 	StatusCheckTest(t, tests, testServ)
 }
