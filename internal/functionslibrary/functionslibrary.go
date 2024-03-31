@@ -2,6 +2,9 @@ package functionslibrary
 
 import (
 	"DevOpsMetricsProject/internal/constants"
+	"DevOpsMetricsProject/internal/coretypes"
+	"bytes"
+	"encoding/json"
 	"math/rand"
 	"time"
 )
@@ -30,4 +33,37 @@ func ConvertStringToMetricType(str string) constants.MetricType {
 	default:
 		return constants.NoneType
 	}
+}
+
+func ConvertMetricTypeToString(mType constants.MetricType) string {
+	switch mType {
+	case constants.GaugeType:
+		return "gauge"
+	case constants.CounterType:
+		return "counter"
+	default:
+		return ""
+	}
+}
+
+func EncodeMetricJSON(mType constants.MetricType, mName string, mValue float64) (*bytes.Buffer, error) {
+	src := coretypes.Metrics{}
+
+	src.ID = mName
+	src.MType = ConvertMetricTypeToString(mType)
+
+	switch mType {
+	case constants.GaugeType:
+		src.Value = &mValue
+	case constants.CounterType:
+		intValue := int64(mValue)
+		src.Delta = &intValue
+	}
+
+	var jsonOut bytes.Buffer
+
+	jsonEncoder := json.NewEncoder(&jsonOut)
+	err := jsonEncoder.Encode(src)
+
+	return &jsonOut, err
 }

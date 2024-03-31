@@ -23,7 +23,7 @@ type dompserver struct {
 
 func Start() {
 	cfg := configs.CreateServerConfig()
-	logger.Initialize(cfg.Loglevel)
+	logger.Initialize(cfg.Loglevel, "server_")
 	dompserv := CreateNewServer()
 	if dompserv.coreMux == nil || dompserv.coreStg == nil {
 		logger.Log.Info("Server initialization failed!", zap.Bool("coreMux", (dompserv.coreMux == nil)), zap.Bool("coreStg", (dompserv.coreStg == nil)))
@@ -42,14 +42,15 @@ func CreateNewServer() *dompserver {
 	coreStg.InitMemStorage()
 	dompserv := &dompserver{coreMux: coreMux, coreStg: coreStg}
 
-	coreMux.Use(WithRequestLog)
 	coreMux.Use(WithResponseLog)
+	coreMux.Use(WithRequestLog)
+
 	coreMux.Get("/", dompserv.GetMainPageHandler)
 	coreMux.Route("/update", func(r chi.Router) {
+		r.Post("/", dompserv.HandlerParserJSON)
+		r.Get("/", dompserv.IncorrectRequestHandler)
 		r.Post("/{mType}/{mName}/{mValue}", dompserv.UpdateMetricHandler)
-		r.Get("/{mType}/{mName}/{mValue}", func(res http.ResponseWriter, req *http.Request) {
-			http.Error(res, "Your request is incorrect!", http.StatusBadRequest)
-		})
+		r.Get("/{mType}/{mName}/{mValue}", dompserv.IncorrectRequestHandler)
 	})
 	coreMux.Route("/value", func(r chi.Router) {
 		r.Get("/{mType}/{mName}", dompserv.GetMetricHandler)
@@ -184,6 +185,14 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 	}
 
 	http.Error(res, "Your request is incorrect!", http.StatusBadRequest)
+}
+
+func (serv *dompserver) IncorrectRequestHandler(res http.ResponseWriter, req *http.Request) {
+	http.Error(res, "Your request is incorrect!", http.StatusBadRequest)
+}
+
+func (serv *dompserver) HandlerParserJSON(res http.ResponseWriter, req *http.Request) {
+	logger.Log.Info("JSON metrics were received")
 }
 
 func WithRequestLog(h http.Handler) http.Handler {

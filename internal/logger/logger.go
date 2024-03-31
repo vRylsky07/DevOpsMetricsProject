@@ -9,7 +9,7 @@ import (
 
 var Log *zap.Logger = zap.NewNop()
 
-func Initialize(level string) error {
+func Initialize(level string, filePrefix string) error {
 
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
@@ -22,7 +22,7 @@ func Initialize(level string) error {
 	outputPath := filepath.Join(".", "logs")
 	os.MkdirAll(outputPath, os.ModePerm)
 
-	outputPath = filepath.Join(outputPath, "domp.log")
+	outputPath = filepath.Join(outputPath, filePrefix+"domp.log")
 
 	cfg.OutputPaths = []string{outputPath, "stderr"}
 

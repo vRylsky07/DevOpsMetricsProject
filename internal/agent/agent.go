@@ -9,7 +9,7 @@ import (
 
 func Start() {
 	cfg := configs.CreateClientConfig()
-	logger.Initialize(cfg.Loglevel)
+	logger.Initialize(cfg.Loglevel, "agent_")
 
 	mSender := sender.CreateSender()
 	mSender.SetDomainURL(cfg.Address)

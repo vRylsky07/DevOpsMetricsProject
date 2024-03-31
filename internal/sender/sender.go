@@ -3,6 +3,7 @@ package sender
 import (
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/functionslibrary"
+	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
 	"errors"
 	"fmt"
@@ -69,9 +70,21 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 
 		for nameGauge, valueGauge := range gauge {
 			finalURL := sStg.CreateMetricURL(constants.GaugeType, sStg.address, nameGauge, valueGauge)
-			resp, err := http.Post(finalURL, "text/plain", nil)
+
+			mJSON, jsonErr := functionslibrary.EncodeMetricJSON(constants.GaugeType, nameGauge, valueGauge)
+
+			if jsonErr != nil {
+				catchErrs = append(catchErrs, jsonErr)
+				continue
+			}
+
+			resp, err := http.Post(finalURL, "text/plain", mJSON)
+
 			if err != nil {
-				catchErrs = append(catchErrs, errors.New("Server is not responding. URL to send was: "+finalURL))
+				errStr := "Server is not responding. URL to send was: " + finalURL
+				catchErrs = append(catchErrs, errors.New(errStr))
+				logger.Log.Info(errStr)
+				logger.Log.Info(mJSON.String())
 				continue
 			}
 			defer resp.Body.Close()
@@ -80,9 +93,22 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 
 		for nameCounter, valueCounter := range counter {
 			finalURL := sStg.CreateMetricURL(constants.CounterType, sStg.address, nameCounter, float64(valueCounter))
-			resp, err := http.Post(finalURL, "text/plain", nil)
+
+			mJSON, jsonErr := functionslibrary.EncodeMetricJSON(constants.CounterType, nameCounter, float64(valueCounter))
+
+			if jsonErr != nil {
+				catchErrs = append(catchErrs, jsonErr)
+				logger.Log.Info(jsonErr.Error())
+				continue
+			}
+
+			resp, err := http.Post(finalURL, "text/plain", mJSON)
+
 			if err != nil {
-				catchErrs = append(catchErrs, errors.New("Server is not responding. URL to send was: "+finalURL))
+				errStr := "Server is not responding. URL to send was: " + finalURL
+				catchErrs = append(catchErrs, errors.New(errStr))
+				logger.Log.Info(errStr)
+				logger.Log.Info(mJSON.String())
 				continue
 			}
 			defer resp.Body.Close()
