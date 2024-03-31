@@ -6,7 +6,6 @@ import (
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
 	"errors"
-	"fmt"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -69,50 +68,11 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
 
 		for nameGauge, valueGauge := range gauge {
-			finalURL := sStg.CreateMetricURL(constants.GaugeType, sStg.address, nameGauge, valueGauge)
-
-			mJSON, jsonErr := functionslibrary.EncodeMetricJSON(constants.GaugeType, nameGauge, valueGauge)
-
-			if jsonErr != nil {
-				catchErrs = append(catchErrs, jsonErr)
-				continue
-			}
-
-			resp, err := http.Post(finalURL, "text/plain", mJSON)
-
-			if err != nil {
-				errStr := "Server is not responding. URL to send was: " + finalURL
-				catchErrs = append(catchErrs, errors.New(errStr))
-				logger.Log.Info(errStr)
-				logger.Log.Info(mJSON.String())
-				continue
-			}
-			defer resp.Body.Close()
-			fmt.Println(finalURL, "Gauge update was successful! Status code: ", resp.StatusCode)
+			sStg.postRequestByMetricType("application/json", constants.GaugeType, nameGauge, valueGauge, &catchErrs)
 		}
 
 		for nameCounter, valueCounter := range counter {
-			finalURL := sStg.CreateMetricURL(constants.CounterType, sStg.address, nameCounter, float64(valueCounter))
-
-			mJSON, jsonErr := functionslibrary.EncodeMetricJSON(constants.CounterType, nameCounter, float64(valueCounter))
-
-			if jsonErr != nil {
-				catchErrs = append(catchErrs, jsonErr)
-				logger.Log.Info(jsonErr.Error())
-				continue
-			}
-
-			resp, err := http.Post(finalURL, "text/plain", mJSON)
-
-			if err != nil {
-				errStr := "Server is not responding. URL to send was: " + finalURL
-				catchErrs = append(catchErrs, errors.New(errStr))
-				logger.Log.Info(errStr)
-				logger.Log.Info(mJSON.String())
-				continue
-			}
-			defer resp.Body.Close()
-			fmt.Println(finalURL, " Counter update was successful! Status code: ", resp.StatusCode)
+			sStg.postRequestByMetricType("application/json", constants.CounterType, nameCounter, float64(valueCounter), &catchErrs)
 		}
 		if reportInterval == -1 {
 			return catchErrs
@@ -193,4 +153,30 @@ func (sStg *SenderStorage) updateGaugeMetrics() {
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "StackSys", float64(mFromRuntime.StackSys))
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "Sys", float64(mFromRuntime.Sys))
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "TotalAlloc", float64(mFromRuntime.TotalAlloc))
+}
+
+func (sStg *SenderStorage) postRequestByMetricType(contentType string, mType constants.MetricType, nameGauge string, valueGauge float64, catchErrs *[]error) {
+	finalURL := sStg.CreateMetricURL(mType, sStg.address, nameGauge, valueGauge)
+
+	mJSON, jsonErr := functionslibrary.EncodeMetricJSON(mType, nameGauge, valueGauge)
+
+	if jsonErr != nil {
+		mergeArray := append(*catchErrs, jsonErr)
+		*catchErrs = mergeArray
+		return
+	}
+
+	resp, err := http.Post(finalURL, contentType, mJSON)
+
+	if err != nil {
+		errStr := "Server is not responding. URL to send was: " + finalURL
+		mergeArray := append(*catchErrs, errors.New(errStr))
+		*catchErrs = mergeArray
+		logger.Log.Info(errStr)
+		logger.Log.Info(mJSON.String())
+		return
+	}
+	defer resp.Body.Close()
+	successLog := finalURL + "Gauge update was successful! Status code: " + strconv.Itoa(resp.StatusCode)
+	logger.Log.Info(successLog)
 }
