@@ -86,15 +86,19 @@ func (sStg *SenderStorage) StopAgentProcessing() {
 }
 
 func (sStg *SenderStorage) CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string {
-	mTypeString := ""
 
-	switch mType {
-	case constants.GaugeType:
-		mTypeString = "/gauge/"
-	case constants.CounterType:
-		mTypeString = "/counter/"
-	}
-	return "http://" + mainURL + "/update" + mTypeString + name + "/" + strconv.FormatFloat(value, 'f', 3, 64)
+	/*
+		mTypeString := ""
+
+		switch mType {
+		case constants.GaugeType:
+			mTypeString = "/gauge/"
+		case constants.CounterType:
+			mTypeString = "/counter/"
+		}
+		return "http://" + mainURL + "/update" + mTypeString + name + "/" + strconv.FormatFloat(value, 'f', -1, 64)
+	*/
+	return "http://" + mainURL + "/update/"
 }
 
 func CreateSender() *SenderStorage {

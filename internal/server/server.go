@@ -3,9 +3,11 @@ package server
 import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
+	"DevOpsMetricsProject/internal/coretypes"
 	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
+	"encoding/json"
 	"net/http"
 	"sort"
 	"strconv"
@@ -47,7 +49,7 @@ func CreateNewServer() *dompserver {
 
 	coreMux.Get("/", dompserv.GetMainPageHandler)
 	coreMux.Route("/update", func(r chi.Router) {
-		r.Post("/", dompserv.HandlerParserJSON)
+		r.Post("/", dompserv.UpdateMetricHandlerJSON)
 		r.Get("/", dompserv.IncorrectRequestHandler)
 		r.Post("/{mType}/{mName}/{mValue}", dompserv.UpdateMetricHandler)
 		r.Get("/{mType}/{mName}/{mValue}", dompserv.IncorrectRequestHandler)
@@ -191,8 +193,36 @@ func (serv *dompserver) IncorrectRequestHandler(res http.ResponseWriter, req *ht
 	http.Error(res, "Your request is incorrect!", http.StatusBadRequest)
 }
 
-func (serv *dompserver) HandlerParserJSON(res http.ResponseWriter, req *http.Request) {
-	logger.Log.Info("JSON metrics were received")
+func (serv *dompserver) UpdateMetricHandlerJSON(res http.ResponseWriter, req *http.Request) {
+
+	var mReceiver coretypes.Metrics
+	err := json.NewDecoder(req.Body).Decode(&mReceiver)
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return
+	}
+
+	switch functionslibrary.ConvertStringToMetricType(mReceiver.MType) {
+	case constants.GaugeType:
+		serv.coreStg.UpdateMetricByName(constants.RenewOperation, constants.GaugeType, mReceiver.ID, *mReceiver.Value)
+		*mReceiver.Value, _ = serv.coreStg.GetMetricByName(constants.GaugeType, mReceiver.ID)
+		logger.Log.Info(`Metric "` + mReceiver.ID + `" was successfully updated! New value is ` + strconv.FormatFloat(*mReceiver.Value, 'f', -1, 64))
+		return
+
+	case constants.CounterType:
+		serv.coreStg.UpdateMetricByName(constants.AddOperation, constants.CounterType, mReceiver.ID, float64(*mReceiver.Delta))
+		var counterValue float64
+		counterValue, _ = serv.coreStg.GetMetricByName(constants.GaugeType, mReceiver.ID)
+		*mReceiver.Delta = int64(counterValue)
+		logger.Log.Info(`Metric "` + mReceiver.ID + `" was successfully updated! New value is ` + strconv.Itoa(int(*mReceiver.Delta)))
+		return
+
+	default:
+		logger.Log.Error("ConvertStringToMetricType returns NoneType")
+		return
+	}
+
 }
 
 func WithRequestLog(h http.Handler) http.Handler {
