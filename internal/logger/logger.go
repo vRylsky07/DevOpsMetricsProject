@@ -1,13 +1,23 @@
 package logger
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"go.uber.org/zap"
 )
 
-var Log *zap.Logger = zap.NewNop()
+type dompLog struct {
+	*zap.Logger
+}
+
+func (dl *dompLog) ErrorHTTP(w http.ResponseWriter, err error, code int) {
+	http.Error(w, err.Error(), code)
+	dl.Error(err.Error())
+}
+
+var Log *dompLog = &dompLog{zap.NewNop()}
 
 func Initialize(level string, filePrefix string) error {
 
@@ -31,9 +41,11 @@ func Initialize(level string, filePrefix string) error {
 		return err
 	}
 
-	Log = zl
+	Log = &dompLog{zl}
 
-	Log = zap.Must(Log, err)
+	zapLogger := zap.Must(Log.Logger, err)
+
+	Log = &dompLog{zapLogger}
 
 	Log.Info("The Logger was successfully initialized")
 	return nil

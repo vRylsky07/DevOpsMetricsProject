@@ -6,6 +6,7 @@ import (
 	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/logger"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"sort"
 	"strconv"
@@ -75,22 +76,22 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 	mName := chi.URLParam(req, "mName")
 
 	if mType != "gauge" && mType != "counter" {
-		http.Error(res, "Your request is incorrect! Metric type should be `gauge` or `counter`", http.StatusBadRequest)
+		logger.Log.ErrorHTTP(res, errors.New("your request is incorrect! Metric type should be `gauge` or `counter`"), http.StatusBadRequest)
 		return
 	}
 
 	if serv == nil {
-		http.Error(res, "ERROR! Server not working fine please check its initialization! Server is nil", http.StatusBadRequest)
+		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization! Server is nil"), http.StatusBadRequest)
 		return
 	}
 
 	if serv.coreMux == nil {
-		http.Error(res, "ERROR! Server not working fine please check its initialization! Serv.coreMux is nil", http.StatusBadRequest)
+		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization! Serv.coreMux is nil"), http.StatusBadRequest)
 		return
 	}
 
 	if serv.coreStg == nil {
-		http.Error(res, "ERROR! Server not working fine please check its initialization! Serv.coreStg is nil", http.StatusBadRequest)
+		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization! Serv.coreStg is nil"), http.StatusBadRequest)
 		return
 	}
 
@@ -151,34 +152,69 @@ func (serv *dompserver) IncorrectRequestHandler(res http.ResponseWriter, req *ht
 
 func (serv *dompserver) UpdateMetricHandlerJSON(res http.ResponseWriter, req *http.Request) {
 
+	if serv == nil {
+		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization! Server is nil"), http.StatusBadRequest)
+		return
+	}
+
+	if serv.coreMux == nil {
+		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization! Serv.coreMux is nil"), http.StatusBadRequest)
+		return
+	}
+
+	if serv.coreStg == nil {
+		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization! Serv.coreStg is nil"), http.StatusBadRequest)
+		return
+	}
+
 	var mReceiver coretypes.Metrics
 	err := json.NewDecoder(req.Body).Decode(&mReceiver)
 
 	if err != nil {
-		logger.Log.Error(err.Error())
+		logger.Log.ErrorHTTP(res, err, http.StatusBadRequest)
 		return
 	}
 
-	switch functionslibrary.ConvertStringToMetricType(mReceiver.MType) {
+	var newValue float64
+
+	stringType := functionslibrary.ConvertStringToMetricType(mReceiver.MType)
+
+	switch stringType {
 	case constants.GaugeType:
-		serv.coreStg.UpdateMetricByName(constants.RenewOperation, constants.GaugeType, mReceiver.ID, *mReceiver.Value)
-		*mReceiver.Value, _ = serv.coreStg.GetMetricByName(constants.GaugeType, mReceiver.ID)
-		logger.Log.Info(`Metric "` + mReceiver.ID + `" was successfully updated! New value is ` + strconv.FormatFloat(*mReceiver.Value, 'f', -1, 64))
-		return
+		if mReceiver.Value == nil {
+			logger.Log.ErrorHTTP(res, errors.New("updating gauge value pointer is nil"), http.StatusBadRequest)
+			return
+		}
+		serv.coreStg.UpdateMetricByName(constants.RenewOperation, stringType, mReceiver.ID, *mReceiver.Value)
+		newValue, _ = serv.coreStg.GetMetricByName(constants.GaugeType, mReceiver.ID)
+		logger.Log.Info(`Metric "` + mReceiver.ID + `" was successfully updated! New value is ` + strconv.FormatFloat(newValue, 'f', -1, 64))
 
 	case constants.CounterType:
-		serv.coreStg.UpdateMetricByName(constants.AddOperation, constants.CounterType, mReceiver.ID, float64(*mReceiver.Delta))
+		if mReceiver.Delta == nil {
+			logger.Log.ErrorHTTP(res, errors.New("updating counter value pointer is nil"), http.StatusBadRequest)
+			return
+		}
+		serv.coreStg.UpdateMetricByName(constants.AddOperation, stringType, mReceiver.ID, float64(*mReceiver.Delta))
 		var counterValue float64
-		counterValue, _ = serv.coreStg.GetMetricByName(constants.GaugeType, mReceiver.ID)
-		*mReceiver.Delta = int64(counterValue)
-		logger.Log.Info(`Metric "` + mReceiver.ID + `" was successfully updated! New value is ` + strconv.Itoa(int(*mReceiver.Delta)))
-		return
+		counterValue, _ = serv.coreStg.GetMetricByName(constants.CounterType, mReceiver.ID)
+		newValue = counterValue
+		logger.Log.Info(`Metric "` + mReceiver.ID + `" was successfully updated! New value is ` + strconv.Itoa(int(newValue)))
 
 	default:
-		logger.Log.Error("ConvertStringToMetricType returns NoneType")
+		convertErr := "ConvertStringToMetricType returns NoneType"
+		logger.Log.ErrorHTTP(res, errors.New(convertErr), http.StatusBadRequest)
 		return
 	}
 
+	respJSON, encodeErr := functionslibrary.EncodeMetricJSON(functionslibrary.ConvertStringToMetricType(mReceiver.MType), mReceiver.ID, newValue)
+	if encodeErr != nil {
+		logger.Log.ErrorHTTP(res, encodeErr, http.StatusInternalServerError)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+	res.Write(respJSON.Bytes())
 }
 
 func (serv *dompserver) WithRequestLog(h http.Handler) http.Handler {

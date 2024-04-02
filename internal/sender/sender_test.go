@@ -100,39 +100,6 @@ func TestSenderStorage_UpdateMetrics(t *testing.T) {
 	}
 }
 
-func TestSenderStorage_CreateMetricURL(t *testing.T) {
-	sStg := &SenderStorage{}
-
-	type args struct {
-		mType   constants.MetricType
-		mainURL string
-		name    string
-		value   float64
-	}
-
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{{
-		name: "CreateMetricURL main case(gauge metric type)",
-		args: args{constants.GaugeType, "test.url", "testGauge", 64.51},
-		want: "http://test.url/update/gauge/testGauge/64.510",
-	}, {
-		name: "CreateMetricURL main case(counter metric type)",
-		args: args{constants.CounterType, "test.url", "testGauge", 37},
-		want: "http://test.url/update/counter/testGauge/37.000",
-	},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := sStg.CreateMetricURL(tt.args.mType, tt.args.mainURL, tt.args.name, tt.args.value); got != tt.want {
-				t.Errorf("SenderStorage.CreateMetricURL() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 	g := map[string]float64{"testGauge": 1}
 	c := map[string]int{"testCounter": 2}

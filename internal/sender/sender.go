@@ -85,22 +85,6 @@ func (sStg *SenderStorage) StopAgentProcessing() {
 	sStg.stopThread = true
 }
 
-func (sStg *SenderStorage) CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string {
-
-	/*
-		mTypeString := ""
-
-		switch mType {
-		case constants.GaugeType:
-			mTypeString = "/gauge/"
-		case constants.CounterType:
-			mTypeString = "/counter/"
-		}
-		return "http://" + mainURL + "/update" + mTypeString + name + "/" + strconv.FormatFloat(value, 'f', -1, 64)
-	*/
-	return "http://" + mainURL + "/update/"
-}
-
 func CreateSender() *SenderStorage {
 	senderStorage := storage.MemStorage{}
 	senderStorage.InitMemStorage()
@@ -159,28 +143,32 @@ func (sStg *SenderStorage) updateGaugeMetrics() {
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "TotalAlloc", float64(mFromRuntime.TotalAlloc))
 }
 
-func (sStg *SenderStorage) postRequestByMetricType(contentType string, mType constants.MetricType, nameGauge string, valueGauge float64, catchErrs *[]error) {
-	finalURL := sStg.CreateMetricURL(mType, sStg.address, nameGauge, valueGauge)
+func (sStg *SenderStorage) postRequestByMetricType(contentType string, mType constants.MetricType, mName string, mValue float64, catchErrs *[]error) {
+	sendURL := "http://" + sStg.address + "/update/"
 
-	mJSON, jsonErr := functionslibrary.EncodeMetricJSON(mType, nameGauge, valueGauge)
+	mJSON, jsonErr := functionslibrary.EncodeMetricJSON(mType, mName, mValue)
 
 	if jsonErr != nil {
 		mergeArray := append(*catchErrs, jsonErr)
 		*catchErrs = mergeArray
+		logger.Log.Error(jsonErr.Error())
 		return
 	}
 
-	resp, err := http.Post(finalURL, contentType, mJSON)
+	logJson := mJSON.String()
+
+	resp, err := http.Post(sendURL, contentType, mJSON)
 
 	if err != nil {
-		errStr := "Server is not responding. URL to send was: " + finalURL
+		errStr := "Server is not responding. URL to send was: " + sendURL
 		mergeArray := append(*catchErrs, errors.New(errStr))
 		*catchErrs = mergeArray
-		logger.Log.Info(errStr)
-		logger.Log.Info(mJSON.String())
+		logger.Log.Error(errStr)
+		logger.Log.Error(mJSON.String())
 		return
 	}
 	defer resp.Body.Close()
-	successLog := finalURL + "Gauge update was successful! Status code: " + strconv.Itoa(resp.StatusCode)
+	successLog := `Metric "` + mName + `" update was successful! Status code: ` + strconv.Itoa(resp.StatusCode)
 	logger.Log.Info(successLog)
+	logger.Log.Info(logJson)
 }
