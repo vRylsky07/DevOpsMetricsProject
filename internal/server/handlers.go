@@ -5,6 +5,7 @@ import (
 	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/logger"
 	"errors"
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -150,20 +151,12 @@ func (serv *dompserver) IncorrectRequestHandler(res http.ResponseWriter, req *ht
 
 func (serv *dompserver) UpdateMetricHandlerJSON(res http.ResponseWriter, req *http.Request) {
 
-	if serv == nil {
-		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization! Server is nil"), http.StatusBadRequest)
+	if serv == nil || serv.coreMux == nil || serv.coreStg == nil {
+		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization"), http.StatusBadRequest)
 		return
 	}
 
-	if serv.coreMux == nil {
-		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization! Serv.coreMux is nil"), http.StatusBadRequest)
-		return
-	}
-
-	if serv.coreStg == nil {
-		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization! Serv.coreStg is nil"), http.StatusBadRequest)
-		return
-	}
+	isUpdate := (req.URL.Path == "/update" || req.URL.Path == "/update/")
 
 	mReceiver, err := functionslibrary.DecodeMetricJSON(req.Body)
 
@@ -178,20 +171,26 @@ func (serv *dompserver) UpdateMetricHandlerJSON(res http.ResponseWriter, req *ht
 
 	switch mType {
 	case constants.GaugeType:
-		if mReceiver.Value == nil {
-			logger.Log.ErrorHTTP(res, errors.New("updating gauge value pointer is nil"), http.StatusBadRequest)
-			return
+		if isUpdate {
+			if mReceiver.Value == nil {
+				logger.Log.ErrorHTTP(res, errors.New("updating gauge value pointer is nil"), http.StatusBadRequest)
+				return
+			}
+			serv.coreStg.UpdateMetricByName(constants.RenewOperation, mType, mReceiver.ID, *mReceiver.Value)
 		}
-		serv.coreStg.UpdateMetricByName(constants.RenewOperation, mType, mReceiver.ID, *mReceiver.Value)
 		newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
 
 	case constants.CounterType:
-		if mReceiver.Delta == nil {
-			logger.Log.ErrorHTTP(res, errors.New("updating counter value pointer is nil"), http.StatusBadRequest)
-			return
+		if isUpdate {
+			if mReceiver.Delta == nil {
+
+				logger.Log.ErrorHTTP(res, errors.New("updating counter value pointer is nil"), http.StatusBadRequest)
+				return
+			}
+			serv.coreStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*mReceiver.Delta))
 		}
-		serv.coreStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*mReceiver.Delta))
 		newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
+		logger.Log.Info(fmt.Sprintf("%f NEW VALUE", newValue))
 
 	default:
 		convertErr := "ConvertStringToMetricType returns NoneType"
