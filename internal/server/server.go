@@ -6,7 +6,7 @@ import (
 	"DevOpsMetricsProject/internal/storage"
 	"net/http"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
 
@@ -41,13 +41,13 @@ func CreateNewServer() *dompserver {
 
 	coreMux.Get("/", dompserv.GetMainPageHandler)
 	coreMux.Route("/update", func(r chi.Router) {
-		r.Post("/", dompserv.UpdateMetricHandlerJSON)
+		r.Post("/", dompserv.MetricHandlerJSON)
 		r.Get("/", dompserv.IncorrectRequestHandler)
 		r.Post("/{mType}/{mName}/{mValue}", dompserv.UpdateMetricHandler)
 		r.Get("/{mType}/{mName}/{mValue}", dompserv.IncorrectRequestHandler)
 	})
 	coreMux.Route("/value", func(r chi.Router) {
-		r.Post("/", dompserv.UpdateMetricHandlerJSON)
+		r.Post("/", dompserv.MetricHandlerJSON)
 		r.Get("/{mType}/{mName}", dompserv.GetMetricHandler)
 	})
 	return dompserv

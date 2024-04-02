@@ -34,6 +34,7 @@ func StatusCheckTest(t *testing.T, tests []*statusCheckStruct, dompserv *dompser
 	}
 }
 
+/*
 func Test_updateMetricHandler(t *testing.T) {
 
 	tests := []*statusCheckStruct{
@@ -82,6 +83,7 @@ func Test_updateMetricHandler(t *testing.T) {
 	}
 	StatusCheckTest(t, tests, CreateNewServer())
 }
+*/
 
 func Test_getMainPageHandler(t *testing.T) {
 

@@ -5,7 +5,6 @@ import (
 	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/logger"
 	"errors"
-	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -149,7 +148,7 @@ func (serv *dompserver) IncorrectRequestHandler(res http.ResponseWriter, req *ht
 	http.Error(res, "Your request is incorrect!", http.StatusBadRequest)
 }
 
-func (serv *dompserver) UpdateMetricHandlerJSON(res http.ResponseWriter, req *http.Request) {
+func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Request) {
 
 	if serv == nil || serv.coreMux == nil || serv.coreStg == nil {
 		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization"), http.StatusBadRequest)
@@ -190,7 +189,6 @@ func (serv *dompserver) UpdateMetricHandlerJSON(res http.ResponseWriter, req *ht
 			serv.coreStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*mReceiver.Delta))
 		}
 		newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
-		logger.Log.Info(fmt.Sprintf("%f NEW VALUE", newValue))
 
 	default:
 		convertErr := "ConvertStringToMetricType returns NoneType"
@@ -227,7 +225,9 @@ func (serv *dompserver) WithRequestLog(h http.Handler) http.Handler {
 }
 
 func (serv *dompserver) WithResponseLog(h http.Handler) http.Handler {
+
 	logFn := func(w http.ResponseWriter, r *http.Request) {
+
 		rlw := &ResponceLogWriter{w, 0, 0}
 		h.ServeHTTP(rlw, r)
 
