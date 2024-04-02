@@ -47,6 +47,7 @@ func CreateNewServer() *dompserver {
 		r.Get("/{mType}/{mName}/{mValue}", dompserv.IncorrectRequestHandler)
 	})
 	coreMux.Route("/value", func(r chi.Router) {
+		r.Post("/", dompserv.UpdateMetricHandlerJSON)
 		r.Get("/{mType}/{mName}", dompserv.GetMetricHandler)
 	})
 	return dompserv

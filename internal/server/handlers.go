@@ -2,10 +2,8 @@ package server
 
 import (
 	"DevOpsMetricsProject/internal/constants"
-	"DevOpsMetricsProject/internal/coretypes"
 	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/logger"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"sort"
@@ -167,8 +165,7 @@ func (serv *dompserver) UpdateMetricHandlerJSON(res http.ResponseWriter, req *ht
 		return
 	}
 
-	var mReceiver coretypes.Metrics
-	err := json.NewDecoder(req.Body).Decode(&mReceiver)
+	mReceiver, err := functionslibrary.DecodeMetricJSON(req.Body)
 
 	if err != nil {
 		logger.Log.ErrorHTTP(res, err, http.StatusBadRequest)
@@ -177,28 +174,24 @@ func (serv *dompserver) UpdateMetricHandlerJSON(res http.ResponseWriter, req *ht
 
 	var newValue float64
 
-	stringType := functionslibrary.ConvertStringToMetricType(mReceiver.MType)
+	mType := functionslibrary.ConvertStringToMetricType(mReceiver.MType)
 
-	switch stringType {
+	switch mType {
 	case constants.GaugeType:
 		if mReceiver.Value == nil {
 			logger.Log.ErrorHTTP(res, errors.New("updating gauge value pointer is nil"), http.StatusBadRequest)
 			return
 		}
-		serv.coreStg.UpdateMetricByName(constants.RenewOperation, stringType, mReceiver.ID, *mReceiver.Value)
-		newValue, _ = serv.coreStg.GetMetricByName(constants.GaugeType, mReceiver.ID)
-		logger.Log.Info(`Metric "` + mReceiver.ID + `" was successfully updated! New value is ` + strconv.FormatFloat(newValue, 'f', -1, 64))
+		serv.coreStg.UpdateMetricByName(constants.RenewOperation, mType, mReceiver.ID, *mReceiver.Value)
+		newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
 
 	case constants.CounterType:
 		if mReceiver.Delta == nil {
 			logger.Log.ErrorHTTP(res, errors.New("updating counter value pointer is nil"), http.StatusBadRequest)
 			return
 		}
-		serv.coreStg.UpdateMetricByName(constants.AddOperation, stringType, mReceiver.ID, float64(*mReceiver.Delta))
-		var counterValue float64
-		counterValue, _ = serv.coreStg.GetMetricByName(constants.CounterType, mReceiver.ID)
-		newValue = counterValue
-		logger.Log.Info(`Metric "` + mReceiver.ID + `" was successfully updated! New value is ` + strconv.Itoa(int(newValue)))
+		serv.coreStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*mReceiver.Delta))
+		newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
 
 	default:
 		convertErr := "ConvertStringToMetricType returns NoneType"

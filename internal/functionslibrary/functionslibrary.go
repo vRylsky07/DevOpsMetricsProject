@@ -5,6 +5,7 @@ import (
 	"DevOpsMetricsProject/internal/coretypes"
 	"bytes"
 	"encoding/json"
+	"io"
 	"math/rand"
 	"time"
 )
@@ -66,4 +67,10 @@ func EncodeMetricJSON(mType constants.MetricType, mName string, mValue float64) 
 	err := jsonEncoder.Encode(src)
 
 	return &jsonOut, err
+}
+
+func DecodeMetricJSON(req io.ReadCloser) (*coretypes.Metrics, error) {
+	var mReceiver coretypes.Metrics
+	err := json.NewDecoder(req).Decode(&mReceiver)
+	return &mReceiver, err
 }

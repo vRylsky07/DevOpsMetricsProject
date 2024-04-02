@@ -6,9 +6,9 @@ import (
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
 	"errors"
+	"fmt"
 	"net/http"
 	"runtime"
-	"strconv"
 	"time"
 )
 
@@ -149,26 +149,27 @@ func (sStg *SenderStorage) postRequestByMetricType(contentType string, mType con
 	mJSON, jsonErr := functionslibrary.EncodeMetricJSON(mType, mName, mValue)
 
 	if jsonErr != nil {
-		mergeArray := append(*catchErrs, jsonErr)
-		*catchErrs = mergeArray
+		*catchErrs = append(*catchErrs, jsonErr)
 		logger.Log.Error(jsonErr.Error())
 		return
 	}
-
-	logJson := mJSON.String()
 
 	resp, err := http.Post(sendURL, contentType, mJSON)
 
 	if err != nil {
 		errStr := "Server is not responding. URL to send was: " + sendURL
-		mergeArray := append(*catchErrs, errors.New(errStr))
-		*catchErrs = mergeArray
+		*catchErrs = append(*catchErrs, errors.New(errStr))
 		logger.Log.Error(errStr)
 		logger.Log.Error(mJSON.String())
 		return
 	}
 	defer resp.Body.Close()
-	successLog := `Metric "` + mName + `" update was successful! Status code: ` + strconv.Itoa(resp.StatusCode)
-	logger.Log.Info(successLog)
-	logger.Log.Info(logJson)
+
+	if resp.StatusCode != http.StatusOK {
+		logger.Log.Info(fmt.Sprintf(`Metric %s update failed! Status code: %d`, mName, resp.StatusCode))
+		return
+	}
+
+	logger.Log.Info(fmt.Sprintf(`Metric %s update was successful! Status code: %d`, mName, resp.StatusCode))
+
 }
