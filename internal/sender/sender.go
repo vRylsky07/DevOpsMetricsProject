@@ -160,7 +160,6 @@ func (sStg *SenderStorage) postRequestByMetricType(contentType string, mType con
 		errStr := "Server is not responding. URL to send was: " + sendURL
 		*catchErrs = append(*catchErrs, errors.New(errStr))
 		logger.Log.Error(errStr)
-		logger.Log.Error(mJSON.String())
 		return
 	}
 	defer resp.Body.Close()
