@@ -67,6 +67,7 @@ func (serv *dompserver) GetMainPageHandler(res http.ResponseWriter, req *http.Re
 
 	htmlFinal := htmlTopPart + htmlMiddlePart + htmlBottomPart
 
+	res.Header().Set("Content-Type", "text/html")
 	res.WriteHeader(http.StatusOK)
 	res.Write([]byte(htmlFinal))
 }
@@ -105,6 +106,7 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 	valueToReturn, gettingValueError := serv.coreStg.GetMetricByName(mTypeConst, mName)
 
 	if gettingValueError == nil {
+		res.Header().Set("Content-Type", "text/html")
 		res.WriteHeader(http.StatusOK)
 		res.Write([]byte(strconv.FormatFloat(valueToReturn, 'f', -1, 64)))
 		return
@@ -254,7 +256,6 @@ func gzipHandle(next http.Handler) http.Handler {
 			logger.Log.ErrorHTTP(w, err, http.StatusNotFound)
 			return
 		}
-		defer gz.Close()
 
 		allowTypes := &[]string{"application/json", "text/html"}
 

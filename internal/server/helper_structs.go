@@ -1,8 +1,9 @@
 package server
 
 import (
-	"io"
+	"compress/gzip"
 	"net/http"
+	"strings"
 )
 
 // Logger handler
@@ -27,21 +28,30 @@ func (rlw *ResponceLogWriter) WriteHeader(statusCode int) {
 
 type gzipWriter struct {
 	http.ResponseWriter
-	Writer       io.Writer
+	Writer       *gzip.Writer
 	AllowedTypes *[]string
+}
+
+func (w gzipWriter) WriteHeader(statusCode int) {
+
+	header := w.Header().Get("Content-Type")
+
+	if w.AllowedTypes != nil && statusCode < 300 {
+		for _, s := range *w.AllowedTypes {
+			if strings.Contains(header, s) {
+				w.Header().Set("Content-Encoding", "gzip")
+			}
+		}
+	}
+
+	w.ResponseWriter.WriteHeader(statusCode)
 }
 
 func (w gzipWriter) Write(b []byte) (int, error) {
 
-	header := w.Header().Get("Content-Type")
-
-	if w.AllowedTypes != nil {
-		for _, s := range *w.AllowedTypes {
-			if s == header {
-				w.Header().Set("Content-Encoding", "gzip")
-				return w.Writer.Write(b)
-			}
-		}
+	if w.Header().Get("Content-Encoding") == "gzip" {
+		defer w.Writer.Close()
+		return w.Writer.Write(b)
 	}
 
 	return w.ResponseWriter.Write(b)
