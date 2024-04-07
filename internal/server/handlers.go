@@ -266,6 +266,7 @@ func gzipHandle(next http.Handler) http.Handler {
 func DecompressHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+			logger.Log.Info("No decompression")
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -273,12 +274,14 @@ func DecompressHandler(next http.Handler) http.Handler {
 		data, err := functionslibrary.DecompressData(r.Body)
 
 		if err != nil {
+			logger.Log.Info("DecompressData failed!")
 			next.ServeHTTP(w, r)
 			return
 		}
 
 		r.Body = data
 
+		logger.Log.Info("Using GZIP decompression")
 		next.ServeHTTP(w, r)
 	})
 }

@@ -3,6 +3,7 @@ package functionslibrary
 import (
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/coretypes"
+	"DevOpsMetricsProject/internal/logger"
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
@@ -104,6 +105,7 @@ func CompressData(data []byte) (*bytes.Buffer, error) {
 func DecompressData(body io.ReadCloser) (io.ReadCloser, error) {
 	gz, err := gzip.NewReader(body)
 	if err != nil {
+		logger.Log.Info("gzip.NewReader failed")
 		return nil, err
 	}
 
@@ -111,6 +113,7 @@ func DecompressData(body io.ReadCloser) (io.ReadCloser, error) {
 
 	decomp, decompErr := io.ReadAll(gz)
 	if decompErr != nil {
+		logger.Log.Info("Decompressiong ReadAll failed")
 		return nil, decompErr
 	}
 
