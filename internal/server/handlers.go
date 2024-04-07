@@ -6,7 +6,6 @@ import (
 	"DevOpsMetricsProject/internal/logger"
 	"compress/gzip"
 	"errors"
-	"io"
 	"net/http"
 	"sort"
 	"strconv"
@@ -138,6 +137,7 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 			serv.coreStg.UpdateMetricByName(constants.AddOperation, mTypeConst, mName, valueInFloat)
 		}
 
+		res.Header().Set("Content-Type", "text/html")
 		res.WriteHeader(http.StatusOK)
 		res.Write([]byte("Metrics was been updated! Thank you!"))
 		return
@@ -268,24 +268,15 @@ func DecompressHandler(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		gz, err := gzip.NewReader(r.Body)
+
+		data, err := functionslibrary.DecompressData(r.Body)
+
 		if err != nil {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		defer gz.Close()
-
-		decomp, err := io.ReadAll(gz)
-		if err != nil {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		newReader := strings.NewReader(string(decomp))
-		newReadCloser := io.NopCloser(newReader)
-
-		r.Body = newReadCloser
+		r.Body = data
 
 		next.ServeHTTP(w, r)
 	})

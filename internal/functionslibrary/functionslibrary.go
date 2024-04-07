@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"io"
 	"math/rand"
+	"strings"
 	"time"
 )
 
@@ -98,4 +99,23 @@ func CompressData(data []byte) (*bytes.Buffer, error) {
 	}
 
 	return &b, nil
+}
+
+func DecompressData(body io.ReadCloser) (io.ReadCloser, error) {
+	gz, err := gzip.NewReader(body)
+	if err != nil {
+		return nil, err
+	}
+
+	defer gz.Close()
+
+	decomp, decompErr := io.ReadAll(gz)
+	if decompErr != nil {
+		return nil, decompErr
+	}
+
+	newReader := strings.NewReader(string(decomp))
+	newReadCloser := io.NopCloser(newReader)
+
+	return newReadCloser, nil
 }
