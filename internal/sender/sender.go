@@ -68,11 +68,11 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
 
 		for nameGauge, valueGauge := range gauge {
-			sStg.postRequestByMetricType(true, constants.GaugeType, nameGauge, valueGauge, &catchErrs)
+			sStg.postRequestByMetricType(false, constants.GaugeType, nameGauge, valueGauge, &catchErrs)
 		}
 
 		for nameCounter, valueCounter := range counter {
-			sStg.postRequestByMetricType(true, constants.CounterType, nameCounter, float64(valueCounter), &catchErrs)
+			sStg.postRequestByMetricType(false, constants.CounterType, nameCounter, float64(valueCounter), &catchErrs)
 		}
 		if reportInterval == -1 {
 			return catchErrs

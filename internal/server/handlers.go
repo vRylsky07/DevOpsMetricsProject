@@ -116,7 +116,6 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 }
 
 func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.Request) {
-
 	mType := chi.URLParam(req, "mType")
 	mName := chi.URLParam(req, "mName")
 	mValue := chi.URLParam(req, "mValue")
@@ -252,17 +251,14 @@ func gzipHandle(next http.Handler) http.Handler {
 
 		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
-			io.WriteString(w, err.Error())
+			logger.Log.ErrorHTTP(w, err, http.StatusNotFound)
 			return
 		}
 		defer gz.Close()
 
-		w.Header().Set("Content-Encoding", "gzip")
-
 		allowTypes := &[]string{"application/json", "text/html"}
 
 		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz, AllowedTypes: allowTypes}, r)
-
 	})
 }
 

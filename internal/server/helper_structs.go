@@ -38,9 +38,11 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	if w.AllowedTypes != nil {
 		for _, s := range *w.AllowedTypes {
 			if s == header {
+				w.Header().Set("Content-Encoding", "gzip")
 				return w.Writer.Write(b)
 			}
 		}
 	}
+
 	return w.ResponseWriter.Write(b)
 }
