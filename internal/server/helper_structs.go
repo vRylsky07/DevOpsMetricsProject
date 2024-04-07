@@ -23,11 +23,24 @@ func (rlw *ResponceLogWriter) WriteHeader(statusCode int) {
 	rlw.statusCode = statusCode
 }
 
+// gzip
+
 type gzipWriter struct {
 	http.ResponseWriter
-	Writer io.Writer
+	Writer       io.Writer
+	AllowedTypes *[]string
 }
 
 func (w gzipWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
+
+	header := w.Header().Get("Content-Type")
+
+	if w.AllowedTypes != nil {
+		for _, s := range *w.AllowedTypes {
+			if s == header {
+				return w.Writer.Write(b)
+			}
+		}
+	}
+	return w.ResponseWriter.Write(b)
 }

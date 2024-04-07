@@ -259,7 +259,10 @@ func gzipHandle(next http.Handler) http.Handler {
 
 		w.Header().Set("Content-Encoding", "gzip")
 
-		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
+		allowTypes := &[]string{"application/json", "text/html"}
+
+		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz, AllowedTypes: allowTypes}, r)
+
 	})
 }
 
