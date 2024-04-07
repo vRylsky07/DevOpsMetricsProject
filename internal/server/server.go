@@ -38,6 +38,8 @@ func CreateNewServer() *dompserver {
 
 	coreMux.Use(dompserv.WithResponseLog)
 	coreMux.Use(dompserv.WithRequestLog)
+	coreMux.Use(gzipHandle)
+	coreMux.Use(DecompressHandler)
 
 	coreMux.Get("/", dompserv.GetMainPageHandler)
 	coreMux.Route("/update", func(r chi.Router) {

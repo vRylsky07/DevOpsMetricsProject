@@ -34,7 +34,6 @@ func StatusCheckTest(t *testing.T, tests []*statusCheckStruct, dompserv *dompser
 	}
 }
 
-/*
 func Test_updateMetricHandler(t *testing.T) {
 
 	tests := []*statusCheckStruct{
@@ -68,22 +67,9 @@ func Test_updateMetricHandler(t *testing.T) {
 			method:       http.MethodPost,
 			wantedStatus: http.StatusNotFound,
 		},
-		{
-			name:         "UpdateMetricHandler getting URL with only rout #1",
-			endpoint:     "/update/",
-			method:       http.MethodPost,
-			wantedStatus: http.StatusNotFound,
-		},
-		{
-			name:         "UpdateMetricHandler getting URL with only rout #2",
-			endpoint:     "/update",
-			method:       http.MethodPost,
-			wantedStatus: http.StatusNotFound,
-		},
 	}
 	StatusCheckTest(t, tests, CreateNewServer())
 }
-*/
 
 func Test_getMainPageHandler(t *testing.T) {
 

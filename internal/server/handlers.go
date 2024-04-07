@@ -4,10 +4,13 @@ import (
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/logger"
+	"compress/gzip"
 	"errors"
+	"io"
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -207,6 +210,8 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 	res.Write(respJSON.Bytes())
 }
 
+// Middlewares
+
 func (serv *dompserver) WithRequestLog(h http.Handler) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -237,19 +242,52 @@ func (serv *dompserver) WithResponseLog(h http.Handler) http.Handler {
 	return http.HandlerFunc(logFn)
 }
 
-type ResponceLogWriter struct {
-	http.ResponseWriter
-	statusCode int
-	size       int
+func gzipHandle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+		if err != nil {
+			io.WriteString(w, err.Error())
+			return
+		}
+		defer gz.Close()
+
+		w.Header().Set("Content-Encoding", "gzip")
+
+		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
+	})
 }
 
-func (rlw *ResponceLogWriter) Write(b []byte) (int, error) {
-	size, err := rlw.ResponseWriter.Write(b)
-	rlw.size = size
-	return size, err
-}
+func DecompressHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		gz, err := gzip.NewReader(r.Body)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
 
-func (rlw *ResponceLogWriter) WriteHeader(statusCode int) {
-	rlw.ResponseWriter.WriteHeader(statusCode)
-	rlw.statusCode = statusCode
+		defer gz.Close()
+
+		decomp, err := io.ReadAll(gz)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		newReader := strings.NewReader(string(decomp))
+		newReadCloser := io.NopCloser(newReader)
+
+		r.Body = newReadCloser
+
+		next.ServeHTTP(w, r)
+	})
 }

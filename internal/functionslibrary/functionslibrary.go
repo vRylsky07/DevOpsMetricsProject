@@ -4,6 +4,7 @@ import (
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/coretypes"
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"io"
 	"math/rand"
@@ -73,4 +74,28 @@ func DecodeMetricJSON(req io.ReadCloser) (*coretypes.Metrics, error) {
 	var mReceiver coretypes.Metrics
 	err := json.NewDecoder(req).Decode(&mReceiver)
 	return &mReceiver, err
+}
+
+func CompressData(data []byte) (*bytes.Buffer, error) {
+	var b bytes.Buffer
+
+	c, err := gzip.NewWriterLevel(&b, gzip.BestSpeed)
+
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = c.Write(data)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &b, nil
 }

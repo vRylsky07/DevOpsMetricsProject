@@ -68,11 +68,11 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
 
 		for nameGauge, valueGauge := range gauge {
-			sStg.postRequestByMetricType("application/json", constants.GaugeType, nameGauge, valueGauge, &catchErrs)
+			sStg.postRequestByMetricType(true, constants.GaugeType, nameGauge, valueGauge, &catchErrs)
 		}
 
 		for nameCounter, valueCounter := range counter {
-			sStg.postRequestByMetricType("application/json", constants.CounterType, nameCounter, float64(valueCounter), &catchErrs)
+			sStg.postRequestByMetricType(true, constants.CounterType, nameCounter, float64(valueCounter), &catchErrs)
 		}
 		if reportInterval == -1 {
 			return catchErrs
@@ -143,7 +143,7 @@ func (sStg *SenderStorage) updateGaugeMetrics() {
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "TotalAlloc", float64(mFromRuntime.TotalAlloc))
 }
 
-func (sStg *SenderStorage) postRequestByMetricType(contentType string, mType constants.MetricType, mName string, mValue float64, catchErrs *[]error) {
+func (sStg *SenderStorage) postRequestByMetricType(compress bool, mType constants.MetricType, mName string, mValue float64, catchErrs *[]error) {
 	sendURL := "http://" + sStg.address + "/update/"
 
 	mJSON, jsonErr := functionslibrary.EncodeMetricJSON(mType, mName, mValue)
@@ -154,9 +154,31 @@ func (sStg *SenderStorage) postRequestByMetricType(contentType string, mType con
 		return
 	}
 
-	resp, err := http.Post(sendURL, contentType, mJSON)
+	if compress {
+		zipped, compErr := functionslibrary.CompressData(mJSON.Bytes())
+		if compErr == nil {
+			mJSON = zipped
+		}
+	}
 
-	if err != nil {
+	client := http.Client{}
+
+	req, errReq := http.NewRequest("POST", sendURL, mJSON)
+
+	if errReq != nil {
+		logger.Log.Error(errReq.Error())
+		return
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
+	if compress {
+		req.Header.Add("Content-Encoding", "gzip ")
+	}
+
+	resp, errDo := client.Do(req)
+
+	if errDo != nil {
 		errStr := "Server is not responding. URL to send was: " + sendURL
 		*catchErrs = append(*catchErrs, errors.New(errStr))
 		logger.Log.Error(errStr)
