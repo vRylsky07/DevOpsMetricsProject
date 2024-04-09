@@ -24,10 +24,15 @@ func Start() {
 		return
 	}
 	logger.Log.Info("Server was successfully initialized!")
+	logger.Log.Info("==============================================================")
+	logger.Log.GetLine()
+	logger.Log.GetLine()
+	logger.Log.GetLine()
 	err := http.ListenAndServe(cfg.Address, dompserv.coreMux)
 	if err != nil {
 		panic(err)
 	}
+
 }
 
 func CreateNewServer() *dompserver {

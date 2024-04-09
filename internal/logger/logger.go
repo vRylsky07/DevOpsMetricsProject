@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"bufio"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -49,4 +50,19 @@ func Initialize(level string, filePrefix string) error {
 
 	Log.Info("The Logger was successfully initialized")
 	return nil
+}
+
+func (dl *dompLog) GetLine() {
+
+	file, err := os.OpenFile("logs/server_domp.log", os.O_RDONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return
+	}
+
+	var scanner *bufio.Scanner = bufio.NewScanner(file)
+	if !scanner.Scan() {
+		return
+	}
+
+	Log.Info(scanner.Text())
 }
