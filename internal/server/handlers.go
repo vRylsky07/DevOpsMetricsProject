@@ -172,6 +172,10 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 
 	mType := functionslibrary.ConvertStringToMetricType(mReceiver.MType)
 
+	if req.Header.Get("MetricsUpdateCondition") != "" {
+		logger.Log.Info("RESET TEMP FILE")
+	}
+
 	switch mType {
 	case constants.GaugeType:
 		if isUpdate {

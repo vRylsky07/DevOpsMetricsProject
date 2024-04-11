@@ -4,7 +4,10 @@ import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -13,6 +16,31 @@ import (
 type dompserver struct {
 	coreMux *chi.Mux
 	coreStg storage.StorageInterface
+}
+
+func (serv *dompserver) CreateTempFile() {
+	dir := filepath.Join(os.TempDir(), "domp_temp")
+
+	err := os.RemoveAll(dir)
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return
+	}
+
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return
+	}
+
+	_, errCreate := os.CreateTemp(dir, "metrics")
+	if errCreate != nil {
+		logger.Log.Error(errCreate.Error())
+		return
+	}
+
+	logger.Log.Info(fmt.Sprintf("Temporal file with current metrics was created. Path: %s", dir))
+
 }
 
 func Start() {
@@ -24,10 +52,8 @@ func Start() {
 		return
 	}
 	logger.Log.Info("Server was successfully initialized!")
-	logger.Log.Info("==============================================================")
-	logger.Log.GetLine()
-	logger.Log.GetLine()
-	logger.Log.GetLine()
+	dompserv.CreateTempFile()
+	defer logger.Log.Info("WTF")
 	err := http.ListenAndServe(cfg.Address, dompserv.coreMux)
 	if err != nil {
 		panic(err)

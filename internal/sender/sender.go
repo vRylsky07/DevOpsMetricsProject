@@ -23,6 +23,7 @@ type SenderStorage struct {
 	senderMemStorage storage.StorageInterface
 	stopThread       bool
 	address          string
+	newUpdatePackage bool
 }
 
 func (sStg *SenderStorage) GetStorage() storage.StorageInterface {
@@ -67,12 +68,13 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 
 		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
 
+		sStg.newUpdatePackage = true
 		for nameGauge, valueGauge := range gauge {
-			sStg.postRequestByMetricType(false, constants.GaugeType, nameGauge, valueGauge, &catchErrs)
+			sStg.postRequestByMetricType(true, constants.GaugeType, nameGauge, valueGauge, &catchErrs)
 		}
 
 		for nameCounter, valueCounter := range counter {
-			sStg.postRequestByMetricType(false, constants.CounterType, nameCounter, float64(valueCounter), &catchErrs)
+			sStg.postRequestByMetricType(true, constants.CounterType, nameCounter, float64(valueCounter), &catchErrs)
 		}
 		if reportInterval == -1 {
 			return catchErrs
@@ -174,6 +176,11 @@ func (sStg *SenderStorage) postRequestByMetricType(compress bool, mType constant
 
 	if compress {
 		req.Header.Add("Content-Encoding", "gzip ")
+	}
+
+	if sStg.newUpdatePackage {
+		req.Header.Add("MetricsUpdateCondition", "NewUpdatePackage")
+		sStg.newUpdatePackage = false
 	}
 
 	resp, errDo := client.Do(req)
