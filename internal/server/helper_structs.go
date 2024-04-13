@@ -3,6 +3,7 @@ package server
 import (
 	"compress/gzip"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -55,4 +56,13 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	}
 
 	return w.ResponseWriter.Write(b)
+}
+
+type MetricsSave struct {
+	StoreInterval int
+	Savefile      *os.File
+}
+
+func (mSave *MetricsSave) IsValid() bool {
+	return mSave.StoreInterval >= 0 && mSave.Savefile != nil
 }

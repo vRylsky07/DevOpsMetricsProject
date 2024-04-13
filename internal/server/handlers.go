@@ -4,8 +4,10 @@ import (
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/logger"
+	"bytes"
 	"compress/gzip"
 	"errors"
+	"io"
 	"net/http"
 	"sort"
 	"strconv"
@@ -159,9 +161,14 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 		return
 	}
 
+	var body bytes.Buffer
+	body.ReadFrom(req.Body)
+
 	isUpdate := (req.URL.Path == "/update" || req.URL.Path == "/update/")
 
-	mReceiver, err := functionslibrary.DecodeMetricJSON(req.Body)
+	reqCopy := io.NopCloser(strings.NewReader(body.String()))
+
+	mReceiver, err := functionslibrary.DecodeMetricJSON(reqCopy)
 
 	if err != nil {
 		logger.Log.ErrorHTTP(res, err, http.StatusBadRequest)
@@ -172,8 +179,16 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 
 	mType := functionslibrary.ConvertStringToMetricType(mReceiver.MType)
 
-	if req.Header.Get("MetricsUpdateCondition") != "" {
-		logger.Log.Info("RESET TEMP FILE")
+	if req.Header.Get("MetricsUpdateCondition") == "NewUpdatePack" {
+		logger.Log.Info("Reseting temp metrics file")
+		err := serv.currentMetrics.Truncate(0)
+		if err != nil {
+			logger.Log.Info(err.Error())
+		}
+		_, errSeek := serv.currentMetrics.Seek(0, 0)
+		if errSeek != nil {
+			logger.Log.Info(errSeek.Error())
+		}
 	}
 
 	switch mType {
@@ -184,6 +199,7 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 				return
 			}
 			serv.coreStg.UpdateMetricByName(constants.RenewOperation, mType, mReceiver.ID, *mReceiver.Value)
+			serv.SaveCurrentMetrics(&body)
 		}
 		newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
 
@@ -195,6 +211,7 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 				return
 			}
 			serv.coreStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*mReceiver.Delta))
+			serv.SaveCurrentMetrics(&body)
 		}
 		newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
 

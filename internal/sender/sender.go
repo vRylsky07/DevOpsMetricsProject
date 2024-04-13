@@ -179,7 +179,7 @@ func (sStg *SenderStorage) postRequestByMetricType(compress bool, mType constant
 	}
 
 	if sStg.newUpdatePackage {
-		req.Header.Add("MetricsUpdateCondition", "NewUpdatePackage")
+		req.Header.Add("MetricsUpdateCondition", "NewUpdatePack")
 		sStg.newUpdatePackage = false
 	}
 
