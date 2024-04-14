@@ -146,6 +146,11 @@ func NewDompServer() *dompserver {
 	cfg := configs.CreateServerConfig()
 	logger.Initialize(cfg.Loglevel, "server_")
 
+	if cfg.StoreInterval < 0 {
+		logger.Log.Error("CreateSavingThread() failed. Store interval value cannot be negative")
+		return nil
+	}
+
 	savefile := RestoreData(cfg, coreStg, GetMetricsSaveFilePath())
 
 	if !cfg.RestoreBool || savefile == nil {
@@ -227,10 +232,6 @@ func GetMetricsSaveFilePath() string {
 }
 
 func CreateMetricsSave(interval int) *MetricsSave {
-	if interval < 0 {
-		logger.Log.Error("CreateSavingThread() failed. Store interval value cannot be negative")
-		return nil
-	}
 
 	dir := filepath.Join(".", "saved")
 
