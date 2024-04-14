@@ -56,7 +56,7 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	address := flag.String("a", "localhost:8080", "input endpoint address")
 	lvl := flag.String("l", "info", "log level")
 	interval := flag.Int("i", 300, "metrics save interval")
-	temp := flag.String("f", "metrics-db.json", "last metrics update")
+	temp := flag.String("f", "/tmp/metrics-db.json", "last metrics update")
 	restore := flag.Bool("r", true, "restore data or not")
 	flag.Parse()
 

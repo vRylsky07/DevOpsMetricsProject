@@ -152,7 +152,27 @@ func NewDompServer() *dompserver {
 }
 
 func CreateTempFile(filename string) *os.File {
-	dir := filepath.Join(os.TempDir(), "domp_temp")
+	//dir := filepath.Join(os.TempDir(), "domp_temp")
+
+	noSepStr := strings.Split(filename, "/")
+
+	if len(noSepStr) <= 0 {
+		logger.Log.Error("CreateTempFile() failed, filename is invalid")
+		return nil
+	}
+
+	var dir string = os.TempDir()
+
+	for i, str := range noSepStr {
+		if i == len(noSepStr)-1 {
+			break
+		}
+		dir = filepath.Join(dir, str)
+	}
+
+	name := noSepStr[len(noSepStr)-1]
+
+	//dir := filepath.Join
 
 	err := os.RemoveAll(dir)
 	if err != nil {
@@ -166,13 +186,13 @@ func CreateTempFile(filename string) *os.File {
 		return nil
 	}
 
-	tFile, errCreate := os.CreateTemp(dir, "*_"+filename)
+	tFile, errCreate := os.CreateTemp(dir, "*_"+name)
 	if errCreate != nil {
 		logger.Log.Error(errCreate.Error())
 		return nil
 	}
 
-	logger.Log.Info(fmt.Sprintf("\nTemporal file with current metrics was created. Path: %s", dir))
+	logger.Log.Info(fmt.Sprintf("\nTemporal file with current metrics was created. Path: %s", filepath.Join(dir, name)))
 
 	return tFile
 }
