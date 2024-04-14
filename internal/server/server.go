@@ -65,6 +65,7 @@ func (serv *dompserver) TransferMetricsToFile() error {
 	}
 
 	logger.Log.Info("Metrics was succesfully transfered to save file")
+	logger.Log.Info(string(buf))
 
 	return nil
 }
