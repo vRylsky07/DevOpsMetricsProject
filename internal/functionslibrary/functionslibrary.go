@@ -9,6 +9,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"strings"
@@ -129,14 +130,14 @@ func UpdateStorageInterfaceByMetricStruct(sStg storage.StorageInterface, mType c
 	switch mType {
 	case constants.GaugeType:
 		if mReceiver.Value == nil {
-			return errors.New("updating gauge value pointer is nil")
+			return fmt.Errorf("updating gauge value pointer is nil, ID=%s", mReceiver.ID)
 		}
 		sStg.UpdateMetricByName(constants.RenewOperation, mType, mReceiver.ID, *mReceiver.Value)
 		return nil
 
 	case constants.CounterType:
 		if mReceiver.Delta == nil {
-			return errors.New("updating counter value pointer is nil")
+			return fmt.Errorf("updating counter value pointer is nil, ID=%s", mReceiver.ID)
 		}
 		sStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*mReceiver.Delta))
 		return nil

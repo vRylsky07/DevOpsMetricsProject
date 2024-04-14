@@ -192,7 +192,7 @@ func CreateTempFile(filename string) *os.File {
 		return nil
 	}
 
-	logger.Log.Info(fmt.Sprintf("\nTemporal file with current metrics was created. Path: %s", filepath.Join(dir, name)))
+	logger.Log.Info(fmt.Sprintf("\nTemporal file with current metrics was created. Path: %s", tFile.Name()))
 
 	return tFile
 }
