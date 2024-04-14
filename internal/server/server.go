@@ -45,8 +45,19 @@ func (serv *dompserver) TransferMetricsToFile() error {
 		logger.Log.Error(errRead.Error())
 		return errRead
 	}
-	serv.savefile.Savefile.Truncate(0)
-	serv.savefile.Savefile.Seek(0, 0)
+	errTrun := serv.savefile.Savefile.Truncate(0)
+	if errTrun != nil {
+		logger.Log.Error(errTrun.Error())
+		return errTrun
+	}
+
+	_, errSeek := serv.savefile.Savefile.Seek(0, 0)
+
+	if errSeek != nil {
+		logger.Log.Error(errSeek.Error())
+		return errSeek
+	}
+
 	_, errWrite := serv.savefile.Savefile.Write(buf)
 	if errWrite != nil {
 		logger.Log.Error(errWrite.Error())
@@ -144,14 +155,14 @@ func NewDompServer() *dompserver {
 	serv := &dompserver{
 		coreMux:        coreMux,
 		coreStg:        coreStg,
-		currentMetrics: CreateTempFile(cfg.TempFile),
+		currentMetrics: CreateTempFile(cfg.TempFile, cfg.RestoreBool),
 		cfg:            cfg,
 		savefile:       savefile,
 	}
 	return serv
 }
 
-func CreateTempFile(filename string) *os.File {
+func CreateTempFile(filename string, restore bool) *os.File {
 	//dir := filepath.Join(os.TempDir(), "domp_temp")
 
 	noSepStr := strings.Split(filename, "/")
@@ -192,6 +203,20 @@ func CreateTempFile(filename string) *os.File {
 		return nil
 	}
 
+	if restore {
+		file, err := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR, 0666)
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+			return nil
+		}
+
+		buf, errRead := io.ReadAll(file)
+		if errRead == nil {
+			tFile.Write(buf)
+		}
+	}
+
 	logger.Log.Info(fmt.Sprintf("\nTemporal file with current metrics was created. Path: %s", tFile.Name()))
 
 	return tFile
@@ -221,6 +246,7 @@ func CreateMetricsSave(interval int) *MetricsSave {
 		return nil
 	}
 
+	logger.Log.Info("New savefile was created")
 	return &MetricsSave{interval, file}
 }
 
@@ -230,7 +256,7 @@ func RestoreData(cfg *configs.ServerConfig, sStg storage.StorageInterface, path 
 		return nil
 	}
 
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND, 0666)
+	file, err := os.OpenFile(path, os.O_RDWR, 0666)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
