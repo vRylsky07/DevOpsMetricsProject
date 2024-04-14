@@ -48,6 +48,7 @@ type ServerConfig struct {
 	Loglevel      string `env:"LOG_LEVEL"`
 	StoreInterval int    `env:"STORE_INTERVAL"`
 	TempFile      string `env:"FILE_STORAGE_PATH"`
+	RestoreBool   bool   `env:"RESTORE"`
 }
 
 func (cfg *ServerConfig) SetServerConfigFlags() {
@@ -56,12 +57,14 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	lvl := flag.String("l", "info", "log level")
 	interval := flag.Int("i", 300, "metrics save interval")
 	temp := flag.String("f", "metrics-db.json", "last metrics update")
+	restore := flag.Bool("r", true, "restore data or not")
 	flag.Parse()
 
 	cfg.Address = *address
 	cfg.Loglevel = *lvl
 	cfg.StoreInterval = *interval
 	cfg.TempFile = *temp
+	cfg.RestoreBool = *restore
 
 	err := env.Parse(cfg)
 	if err != nil {

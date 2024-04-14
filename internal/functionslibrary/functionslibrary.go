@@ -4,9 +4,11 @@ import (
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/coretypes"
 	"DevOpsMetricsProject/internal/logger"
+	"DevOpsMetricsProject/internal/storage"
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"io"
 	"math/rand"
 	"strings"
@@ -121,4 +123,26 @@ func DecompressData(body io.ReadCloser) (io.ReadCloser, error) {
 	newReadCloser := io.NopCloser(newReader)
 
 	return newReadCloser, nil
+}
+
+func UpdateStorageInterfaceByMetricStruct(sStg storage.StorageInterface, mType constants.MetricType, mReceiver *coretypes.Metrics) error {
+	switch mType {
+	case constants.GaugeType:
+		if mReceiver.Value == nil {
+			return errors.New("updating gauge value pointer is nil")
+		}
+		sStg.UpdateMetricByName(constants.RenewOperation, mType, mReceiver.ID, *mReceiver.Value)
+		return nil
+
+	case constants.CounterType:
+		if mReceiver.Delta == nil {
+			return errors.New("updating counter value pointer is nil")
+		}
+		sStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*mReceiver.Delta))
+		return nil
+
+	default:
+		convertErr := "ConvertStringToMetricType returns NoneType"
+		return errors.New(convertErr)
+	}
 }

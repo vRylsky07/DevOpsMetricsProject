@@ -2,14 +2,17 @@ package server
 
 import (
 	"DevOpsMetricsProject/internal/configs"
+	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -44,7 +47,12 @@ func (serv *dompserver) TransferMetricsToFile() error {
 	}
 	serv.savefile.Savefile.Truncate(0)
 	serv.savefile.Savefile.Seek(0, 0)
-	serv.savefile.Savefile.Write(buf)
+	_, errWrite := serv.savefile.Savefile.Write(buf)
+	if errWrite != nil {
+		logger.Log.Error(errWrite.Error())
+		return errWrite
+	}
+
 	logger.Log.Info("Metrics was succesfully transfered to save file")
 
 	return nil
@@ -78,7 +86,6 @@ func (serv *dompserver) StartSaveMetricsThread() {
 
 func Start() {
 	dompserv := CreateNewServer()
-	logger.Initialize(dompserv.cfg.Loglevel, "server_")
 	dompserv.StartSaveMetricsThread()
 	if !dompserv.IsValid() {
 		logger.Log.Info(
@@ -126,12 +133,20 @@ func NewDompServer() *dompserver {
 	coreStg := &storage.MemStorage{}
 	coreStg.InitMemStorage()
 	cfg := configs.CreateServerConfig()
+	logger.Initialize(cfg.Loglevel, "server_")
+
+	savefile := RestoreData(cfg, coreStg, GetMetricsSaveFilePath())
+
+	if !cfg.RestoreBool || savefile == nil {
+		savefile = CreateMetricsSave(cfg.StoreInterval)
+	}
+
 	serv := &dompserver{
 		coreMux:        coreMux,
 		coreStg:        coreStg,
 		currentMetrics: CreateTempFile(cfg.TempFile),
 		cfg:            cfg,
-		savefile:       CreateMetricsSave(cfg.StoreInterval),
+		savefile:       savefile,
 	}
 	return serv
 }
@@ -162,6 +177,10 @@ func CreateTempFile(filename string) *os.File {
 	return tFile
 }
 
+func GetMetricsSaveFilePath() string {
+	return filepath.Join(".", "saved", "SavedMetrics-db.json")
+}
+
 func CreateMetricsSave(interval int) *MetricsSave {
 	if interval < 0 {
 		logger.Log.Error("CreateSavingThread() failed. Store interval value cannot be negative")
@@ -176,7 +195,7 @@ func CreateMetricsSave(interval int) *MetricsSave {
 		return nil
 	}
 
-	file, errCreate := os.Create(filepath.Join(dir, "SavedMetrics-db.json"))
+	file, errCreate := os.Create(GetMetricsSaveFilePath())
 	if errCreate != nil {
 		logger.Log.Error(errCreate.Error())
 		return nil
@@ -185,7 +204,42 @@ func CreateMetricsSave(interval int) *MetricsSave {
 	return &MetricsSave{interval, file}
 }
 
+func RestoreData(cfg *configs.ServerConfig, sStg storage.StorageInterface, path string) *MetricsSave {
+	if !cfg.RestoreBool || sStg == nil {
+		logger.Log.Info("Restore data skipped")
+		return nil
+	}
+
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND, 0666)
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return nil
+	}
+
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := io.NopCloser(strings.NewReader(string(scanner.Bytes())))
+
+		metricStruct, err := functionslibrary.DecodeMetricJSON(line)
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+			continue
+		}
+
+		errUpdate := functionslibrary.UpdateStorageInterfaceByMetricStruct(sStg, functionslibrary.ConvertStringToMetricType(metricStruct.MType), metricStruct)
+		if errUpdate != nil {
+			logger.Log.Error(errUpdate.Error())
+			continue
+		}
+	}
+
+	logger.Log.Info("Storage was successfully restored from save file")
+	return &MetricsSave{cfg.StoreInterval, file}
+}
+
 //конструкторы NewRouter
 //логгер на два
 //конфиг передвинуть
-//сейв в файл updatemetricsHandler

@@ -141,6 +141,11 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 			serv.coreStg.UpdateMetricByName(constants.AddOperation, mTypeConst, mName, valueInFloat)
 		}
 
+		mJSON, errEnc := functionslibrary.EncodeMetricJSON(mTypeConst, mName, valueInFloat)
+		if errEnc == nil {
+			serv.SaveCurrentMetrics(mJSON)
+		}
+
 		res.Header().Set("Content-Type", "text/html")
 		res.WriteHeader(http.StatusOK)
 		res.Write([]byte("Metrics was been updated! Thank you!"))
@@ -191,41 +196,22 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 		}
 	}
 
-	switch mType {
-	case constants.GaugeType:
-		if isUpdate {
-			if mReceiver.Value == nil {
-				logger.Log.ErrorHTTP(res, errors.New("updating gauge value pointer is nil"), http.StatusBadRequest)
-				return
-			}
-			serv.coreStg.UpdateMetricByName(constants.RenewOperation, mType, mReceiver.ID, *mReceiver.Value)
-			serv.SaveCurrentMetrics(&body)
+	if isUpdate {
+		err := functionslibrary.UpdateStorageInterfaceByMetricStruct(serv.coreStg, mType, mReceiver)
+		if err != nil {
+			logger.Log.ErrorHTTP(res, err, http.StatusInternalServerError)
 		}
-		newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
-
-	case constants.CounterType:
-		if isUpdate {
-			if mReceiver.Delta == nil {
-
-				logger.Log.ErrorHTTP(res, errors.New("updating counter value pointer is nil"), http.StatusBadRequest)
-				return
-			}
-			serv.coreStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*mReceiver.Delta))
-			serv.SaveCurrentMetrics(&body)
-		}
-		newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
-
-	default:
-		convertErr := "ConvertStringToMetricType returns NoneType"
-		logger.Log.ErrorHTTP(res, errors.New(convertErr), http.StatusBadRequest)
-		return
 	}
+
+	newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
 
 	respJSON, encodeErr := functionslibrary.EncodeMetricJSON(functionslibrary.ConvertStringToMetricType(mReceiver.MType), mReceiver.ID, newValue)
 	if encodeErr != nil {
 		logger.Log.ErrorHTTP(res, encodeErr, http.StatusInternalServerError)
 		return
 	}
+
+	serv.SaveCurrentMetrics(&body)
 
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
