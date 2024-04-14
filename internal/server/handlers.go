@@ -201,10 +201,16 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 		if err != nil {
 			logger.Log.ErrorHTTP(res, err, http.StatusInternalServerError)
 		}
-		serv.SaveCurrentMetrics(&body)
 	}
 
 	newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
+
+	if isUpdate {
+		updatedJson, err := functionslibrary.EncodeMetricJSON(mType, mReceiver.ID, newValue)
+		if err == nil {
+			serv.SaveCurrentMetrics(updatedJson)
+		}
+	}
 
 	respJSON, encodeErr := functionslibrary.EncodeMetricJSON(functionslibrary.ConvertStringToMetricType(mReceiver.MType), mReceiver.ID, newValue)
 	if encodeErr != nil {

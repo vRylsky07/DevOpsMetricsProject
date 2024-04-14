@@ -73,10 +73,79 @@ func (serv *dompserver) TransferMetricsToFile() error {
 func (serv *dompserver) SaveCurrentMetrics(b *bytes.Buffer) {
 	switch serv.savefile.StoreInterval {
 	case 0:
-		serv.savefile.Savefile.Write(b.Bytes())
+		ReplaceOrAdd(serv.savefile.Savefile, b)
+		//serv.savefile.Savefile.Write(b.Bytes())
 	default:
-		serv.currentMetrics.Write(b.Bytes())
+		ReplaceOrAdd(serv.currentMetrics, b)
+		//serv.currentMetrics.Write(b.Bytes())
 	}
+}
+
+func ReplaceOrAdd(file *os.File, b *bytes.Buffer) {
+	//fmt.Println("============================================================")
+	openF, err := os.OpenFile(file.Name(), os.O_RDWR, 0666)
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return
+	}
+
+	scanner := bufio.NewScanner(openF)
+
+	var newBuf []byte
+	containter := bytes.NewBuffer(newBuf)
+
+	matched := false
+	for scanner.Scan() {
+
+		readerSave := io.NopCloser(strings.NewReader(string(scanner.Bytes())))
+		//fmt.Println("HERE: " + string(scanner.Bytes()))
+		mFromSave, err := functionslibrary.DecodeMetricJSON(readerSave)
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+			return
+		}
+
+		readerBuf := io.NopCloser(strings.NewReader(b.String()))
+		mFromBuf, errBuf := functionslibrary.DecodeMetricJSON(readerBuf)
+
+		if errBuf != nil {
+			logger.Log.Error(errBuf.Error())
+			return
+		}
+
+		if mFromSave.ID == mFromBuf.ID {
+			//fmt.Println("MATCHED " + mFromSave.ID + " " + mFromBuf.ID)
+			containter.Write(b.Bytes())
+			//containter.Write([]byte("\n"))
+			matched = true
+		} else {
+			containter.Write(scanner.Bytes())
+			containter.Write([]byte("\n"))
+		}
+	}
+
+	if !matched {
+		containter.Write(b.Bytes())
+		//containter.Write([]byte("\n"))
+	}
+
+	//fmt.Println("WTFFF: " + containter.String())
+
+	errTrun := file.Truncate(0)
+	if errTrun != nil {
+		logger.Log.Error(errTrun.Error())
+		return
+	}
+
+	_, errSeek := file.Seek(0, 0)
+
+	if errSeek != nil {
+		logger.Log.Error(errSeek.Error())
+		return
+	}
+
+	file.Write(containter.Bytes())
 }
 
 func (serv *dompserver) StartSaveMetricsThread() {
