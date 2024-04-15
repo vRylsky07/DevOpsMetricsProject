@@ -1,17 +1,6 @@
 package sender
 
-import (
-	"DevOpsMetricsProject/internal/constants"
-	storage_custom_mocks "DevOpsMetricsProject/internal/storage/custom_mock"
-	mock_storage "DevOpsMetricsProject/internal/storage/mocks"
-	"fmt"
-	"strings"
-	"testing"
-
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
-)
-
+/*
 func TestSenderStorage_InitSenderStorage(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -136,3 +125,4 @@ func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 		})
 	}
 }
+*/

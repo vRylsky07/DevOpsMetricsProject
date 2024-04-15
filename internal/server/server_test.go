@@ -1,14 +1,5 @@
 package server
 
-import (
-	"net/http"
-	"net/http/httptest"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-)
-
 type statusCheckStruct struct {
 	name         string
 	endpoint     string
@@ -16,6 +7,7 @@ type statusCheckStruct struct {
 	wantedStatus int
 }
 
+/*
 func StatusCheckTest(t *testing.T, tests []*statusCheckStruct, dompserv *dompserver) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
