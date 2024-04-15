@@ -44,7 +44,7 @@ func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
 		actual *SenderStorage
 	}{{
 		name:   "updateGaugeMetrics",
-		actual: &SenderStorage{storageChecker, false, "", false},
+		actual: &SenderStorage{storageChecker, false, ""},
 	},
 	}
 	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.GaugeType, gomock.Any(), gomock.Any()).Times(28)
@@ -66,7 +66,7 @@ func TestSenderStorage_updateCounterMetrics(t *testing.T) {
 		actual *SenderStorage
 	}{{
 		name:   "updateCounterMetrics",
-		actual: &SenderStorage{storageChecker, false, "", false},
+		actual: &SenderStorage{storageChecker, false, ""},
 	},
 	}
 	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.CounterType, gomock.Any(), gomock.Any()).Times(1)
@@ -88,7 +88,7 @@ func TestSenderStorage_UpdateMetrics(t *testing.T) {
 		actual *SenderStorage
 	}{{
 		name:   "Update Metrics",
-		actual: &SenderStorage{storageChecker, false, "", false},
+		actual: &SenderStorage{storageChecker, false, ""},
 	},
 	}
 	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.GaugeType, gomock.Any(), gomock.Any()).AnyTimes()
@@ -111,7 +111,7 @@ func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 		sStg *SenderStorage
 	}{{
 		name: "Send metrics to server HTTP",
-		sStg: &SenderStorage{testingStorage, false, "http://localhost:8080", false},
+		sStg: &SenderStorage{testingStorage, false, "http://localhost:8080"},
 	},
 	}
 

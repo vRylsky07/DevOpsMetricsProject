@@ -184,18 +184,6 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 
 	mType := functionslibrary.ConvertStringToMetricType(mReceiver.MType)
 
-	if req.Header.Get("MetricsUpdateCondition") == "NewUpdatePack" {
-		logger.Log.Info("Reseting temp metrics file")
-		err := serv.currentMetrics.Truncate(0)
-		if err != nil {
-			logger.Log.Info(err.Error())
-		}
-		_, errSeek := serv.currentMetrics.Seek(0, 0)
-		if errSeek != nil {
-			logger.Log.Info(errSeek.Error())
-		}
-	}
-
 	if isUpdate {
 		err := functionslibrary.UpdateStorageInterfaceByMetricStruct(serv.coreStg, mType, mReceiver)
 		if err != nil {
