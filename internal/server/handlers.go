@@ -21,8 +21,8 @@ import (
 
 func (serv *dompserver) GetMainPageHandler(res http.ResponseWriter, req *http.Request) {
 
-	if serv == nil || serv.coreMux == nil || serv.coreStg == nil {
-		http.Error(res, "Server not working fine please check its initialization!", http.StatusBadRequest)
+	if !serv.IsValid() {
+		http.Error(res, "Server not working fine please check its initialization!", http.StatusInternalServerError)
 		return
 	}
 
@@ -75,26 +75,17 @@ func (serv *dompserver) GetMainPageHandler(res http.ResponseWriter, req *http.Re
 }
 
 func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Request) {
+
+	if !serv.IsValid() {
+		http.Error(res, "Server not working fine please check its initialization!", http.StatusInternalServerError)
+		return
+	}
+
 	mType := chi.URLParam(req, "mType")
 	mName := chi.URLParam(req, "mName")
 
 	if mType != "gauge" && mType != "counter" {
 		logger.Log.ErrorHTTP(res, errors.New("your request is incorrect! Metric type should be `gauge` or `counter`"), http.StatusBadRequest)
-		return
-	}
-
-	if serv == nil {
-		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization! Server is nil"), http.StatusBadRequest)
-		return
-	}
-
-	if serv.coreMux == nil {
-		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization! Serv.coreMux is nil"), http.StatusBadRequest)
-		return
-	}
-
-	if serv.coreStg == nil {
-		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization! Serv.coreStg is nil"), http.StatusBadRequest)
 		return
 	}
 
@@ -119,6 +110,12 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 }
 
 func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.Request) {
+
+	if !serv.IsValid() {
+		http.Error(res, "Server not working fine please check its initialization!", http.StatusInternalServerError)
+		return
+	}
+
 	mType := chi.URLParam(req, "mType")
 	mName := chi.URLParam(req, "mName")
 	mValue := chi.URLParam(req, "mValue")
@@ -160,6 +157,11 @@ func (serv *dompserver) IncorrectRequestHandler(res http.ResponseWriter, req *ht
 }
 
 func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Request) {
+
+	if !serv.IsValid() {
+		http.Error(res, "Server not working fine please check its initialization!", http.StatusInternalServerError)
+		return
+	}
 
 	if serv == nil || serv.coreMux == nil || serv.coreStg == nil {
 		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization"), http.StatusBadRequest)

@@ -1,6 +1,7 @@
 package sender
 
 import (
+	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/logger"
@@ -22,44 +23,59 @@ type SenderInterface interface {
 type SenderStorage struct {
 	senderMemStorage storage.StorageInterface
 	stopThread       bool
-	address          string
+	cfg              *configs.ClientConfig
+}
+
+func (sStg *SenderStorage) IsValid() bool {
+	if sStg != nil && sStg.senderMemStorage != nil && sStg.cfg != nil {
+		return true
+	}
+	logger.Log.Error("Sender Storage is not valid")
+	return false
 }
 
 func (sStg *SenderStorage) GetStorage() storage.StorageInterface {
+	if !sStg.IsValid() {
+		return nil
+	}
 	return sStg.senderMemStorage
 }
 
-func (sStg *SenderStorage) SetDomainURL(address string) {
-	sStg.address = address
-}
-
-func (sStg *SenderStorage) InitSenderStorage(newStg storage.StorageInterface) {
+func (sStg *SenderStorage) InitSenderStorage(cfg *configs.ClientConfig, newStg storage.StorageInterface) {
 	sStg.senderMemStorage = newStg
-	sStg.address = "http://localhost:8080"
+	sStg.cfg = cfg
 }
 
-func (sStg *SenderStorage) UpdateMetrics(pollInterval int) {
+func (sStg *SenderStorage) UpdateMetrics() {
+	if !sStg.IsValid() {
+		return
+	}
 
 	if sStg.GetStorage() == nil {
 		sStg.GetStorage().InitMemStorage()
 	}
 
 	for !sStg.stopThread {
-		time.Sleep(time.Duration(pollInterval) * time.Second)
+		time.Sleep(time.Duration(sStg.cfg.PollInterval) * time.Second)
 		sStg.updateCounterMetrics()
 		sStg.updateGaugeMetrics()
-		if pollInterval == -1 {
+		if sStg.cfg.PollInterval == -1 {
 			return
 		}
 	}
 }
 
-func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
+func (sStg *SenderStorage) SendMetricsHTTP() []error {
+	if !sStg.IsValid() {
+		return []error{errors.New("sender Storage is not valid")}
+	}
+
+	interval := sStg.cfg.ReportInterval
 
 	var catchErrs []error
 
 	for !sStg.stopThread {
-		time.Sleep(time.Duration(reportInterval) * time.Second)
+		time.Sleep(time.Duration(interval) * time.Second)
 		if sStg == nil {
 			catchErrs = append(catchErrs, errors.New("SendMetricsHTTP() FAILED! Storage of sender module is equal nil"))
 			return catchErrs
@@ -74,7 +90,7 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 		for nameCounter, valueCounter := range counter {
 			sStg.postRequestByMetricType(true, constants.CounterType, nameCounter, float64(valueCounter), &catchErrs)
 		}
-		if reportInterval == -1 {
+		if interval == -1 {
 			return catchErrs
 		}
 	}
@@ -82,20 +98,26 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 }
 
 func (sStg *SenderStorage) StopAgentProcessing() {
+	if !sStg.IsValid() {
+		return
+	}
 	sStg.stopThread = true
 }
 
-func CreateSender() *SenderStorage {
+func CreateSender(cfg *configs.ClientConfig) *SenderStorage {
 	senderStorage := storage.MemStorage{}
 	senderStorage.InitMemStorage()
 
 	mSender := &SenderStorage{}
-	mSender.InitSenderStorage(&senderStorage)
+	mSender.InitSenderStorage(cfg, &senderStorage)
 
 	return mSender
 }
 
 func (sStg *SenderStorage) updateCounterMetrics() {
+	if !sStg.IsValid() {
+		return
+	}
 
 	if sStg.GetStorage() == nil {
 		sStg.GetStorage().InitMemStorage()
@@ -105,6 +127,9 @@ func (sStg *SenderStorage) updateCounterMetrics() {
 }
 
 func (sStg *SenderStorage) updateGaugeMetrics() {
+	if !sStg.IsValid() {
+		return
+	}
 
 	if sStg.GetStorage() == nil {
 		sStg.GetStorage().InitMemStorage()
@@ -144,7 +169,12 @@ func (sStg *SenderStorage) updateGaugeMetrics() {
 }
 
 func (sStg *SenderStorage) postRequestByMetricType(compress bool, mType constants.MetricType, mName string, mValue float64, catchErrs *[]error) {
-	sendURL := "http://" + sStg.address + "/update/"
+
+	if !sStg.IsValid() {
+		return
+	}
+
+	sendURL := "http://" + sStg.cfg.Address + "/update/"
 
 	mJSON, jsonErr := functionslibrary.EncodeMetricJSON(mType, mName, mValue)
 
@@ -192,5 +222,4 @@ func (sStg *SenderStorage) postRequestByMetricType(compress bool, mType constant
 	}
 
 	logger.Log.Info(fmt.Sprintf(`Metric %s update was successful! Status code: %d`, mName, resp.StatusCode))
-
 }

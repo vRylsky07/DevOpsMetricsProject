@@ -27,7 +27,7 @@ func TestSenderStorage_InitSenderStorage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.actual.InitSenderStorage(tt.args)
+			tt.actual.InitSenderStorage(nil, tt.args)
 			assert.NotNil(t, tt.actual)
 			assert.NotNil(t, tt.actual.GetStorage())
 		})
@@ -44,7 +44,7 @@ func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
 		actual *SenderStorage
 	}{{
 		name:   "updateGaugeMetrics",
-		actual: &SenderStorage{storageChecker, false, ""},
+		actual: &SenderStorage{storageChecker, false, nil},
 	},
 	}
 	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.GaugeType, gomock.Any(), gomock.Any()).Times(28)
@@ -66,7 +66,7 @@ func TestSenderStorage_updateCounterMetrics(t *testing.T) {
 		actual *SenderStorage
 	}{{
 		name:   "updateCounterMetrics",
-		actual: &SenderStorage{storageChecker, false, ""},
+		actual: &SenderStorage{storageChecker, false, nil},
 	},
 	}
 	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.CounterType, gomock.Any(), gomock.Any()).Times(1)
@@ -88,14 +88,14 @@ func TestSenderStorage_UpdateMetrics(t *testing.T) {
 		actual *SenderStorage
 	}{{
 		name:   "Update Metrics",
-		actual: &SenderStorage{storageChecker, false, ""},
+		actual: &SenderStorage{storageChecker, false, nil},
 	},
 	}
 	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.GaugeType, gomock.Any(), gomock.Any()).AnyTimes()
 	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.CounterType, gomock.Any(), gomock.Any()).AnyTimes().Return()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.actual.UpdateMetrics(-1)
+			tt.actual.UpdateMetrics()
 		})
 	}
 }
@@ -111,13 +111,13 @@ func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 		sStg *SenderStorage
 	}{{
 		name: "Send metrics to server HTTP",
-		sStg: &SenderStorage{testingStorage, false, "http://localhost:8080"},
+		sStg: &SenderStorage{testingStorage, false, nil},
 	},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := tt.sStg.SendMetricsHTTP(-1)
+			errs := tt.sStg.SendMetricsHTTP()
 
 			g, c := tt.sStg.GetStorage().ReadMemStorageFields()
 			if len(errs) != (len(g) + len(c)) {
