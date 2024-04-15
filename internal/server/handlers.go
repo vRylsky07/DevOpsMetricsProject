@@ -194,9 +194,9 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 	newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
 
 	if isUpdate {
-		updatedJson, err := functionslibrary.EncodeMetricJSON(mType, mReceiver.ID, newValue)
+		updatedJSON, err := functionslibrary.EncodeMetricJSON(mType, mReceiver.ID, newValue)
 		if err == nil {
-			serv.SaveCurrentMetrics(updatedJson)
+			serv.SaveCurrentMetrics(updatedJSON)
 		}
 	}
 

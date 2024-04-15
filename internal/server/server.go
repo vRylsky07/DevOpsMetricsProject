@@ -239,7 +239,7 @@ func CreateTempFile(filename string, restore bool) *os.File {
 		return nil
 	}
 
-	var dir string = os.TempDir()
+	dir := os.TempDir()
 
 	for i, str := range noSepStr {
 		if i == len(noSepStr)-1 {
