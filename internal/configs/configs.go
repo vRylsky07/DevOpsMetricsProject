@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"errors"
 	"flag"
 	"log"
 
@@ -75,5 +76,10 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 func CreateServerConfig() *ServerConfig {
 	cfg := &ServerConfig{}
 	cfg.SetServerConfigFlags()
+
+	if cfg.StoreInterval < 0 {
+		panic(errors.New("config initialization failed! Store interval value cannot be negative"))
+	}
+
 	return cfg
 }

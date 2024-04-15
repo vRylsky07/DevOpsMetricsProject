@@ -39,6 +39,8 @@ func (serv *dompserver) TransferMetricsToFile() error {
 		return err
 	}
 
+	defer file.Close()
+
 	buf, errRead := io.ReadAll(file)
 
 	if errRead != nil {
@@ -73,21 +75,21 @@ func (serv *dompserver) TransferMetricsToFile() error {
 func (serv *dompserver) SaveCurrentMetrics(b *bytes.Buffer) {
 	switch serv.savefile.StoreInterval {
 	case 0:
-		ReplaceOrAdd(serv.savefile.Savefile, b)
-		//serv.savefile.Savefile.Write(b.Bytes())
+		ReplaceOrAddSaveRow(serv.savefile.Savefile, b)
 	default:
-		ReplaceOrAdd(serv.currentMetrics, b)
-		//serv.currentMetrics.Write(b.Bytes())
+		ReplaceOrAddSaveRow(serv.currentMetrics, b)
 	}
 }
 
-func ReplaceOrAdd(file *os.File, b *bytes.Buffer) {
-	//fmt.Println("============================================================")
+func ReplaceOrAddSaveRow(file *os.File, b *bytes.Buffer) {
 	openF, err := os.OpenFile(file.Name(), os.O_RDWR, 0666)
+
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return
 	}
+
+	defer openF.Close()
 
 	scanner := bufio.NewScanner(openF)
 
@@ -98,7 +100,6 @@ func ReplaceOrAdd(file *os.File, b *bytes.Buffer) {
 	for scanner.Scan() {
 
 		readerSave := io.NopCloser(strings.NewReader(string(scanner.Bytes())))
-		//fmt.Println("HERE: " + string(scanner.Bytes()))
 		mFromSave, err := functionslibrary.DecodeMetricJSON(readerSave)
 
 		if err != nil {
@@ -115,22 +116,16 @@ func ReplaceOrAdd(file *os.File, b *bytes.Buffer) {
 		}
 
 		if mFromSave.ID == mFromBuf.ID {
-			//fmt.Println("MATCHED " + mFromSave.ID + " " + mFromBuf.ID)
 			containter.Write(b.Bytes())
-			//containter.Write([]byte("\n"))
 			matched = true
 		} else {
 			containter.Write(scanner.Bytes())
-			containter.Write([]byte("\n"))
 		}
 	}
 
 	if !matched {
 		containter.Write(b.Bytes())
-		//containter.Write([]byte("\n"))
 	}
-
-	//fmt.Println("WTFFF: " + containter.String())
 
 	errTrun := file.Truncate(0)
 	if errTrun != nil {
@@ -216,29 +211,17 @@ func NewDompServer() *dompserver {
 	cfg := configs.CreateServerConfig()
 	logger.Initialize(cfg.Loglevel, "server_")
 
-	if cfg.StoreInterval < 0 {
-		logger.Log.Error("CreateSavingThread() failed. Store interval value cannot be negative")
-		return nil
-	}
-
-	savefile := RestoreData(cfg, coreStg, GetMetricsSaveFilePath())
-
-	if !cfg.RestoreBool || savefile == nil {
-		savefile = CreateMetricsSave(cfg.StoreInterval)
-	}
-
 	serv := &dompserver{
 		coreMux:        coreMux,
 		coreStg:        coreStg,
 		currentMetrics: CreateTempFile(cfg.TempFile, cfg.RestoreBool),
 		cfg:            cfg,
-		savefile:       savefile,
+		savefile:       RestoreData(cfg, coreStg),
 	}
 	return serv
 }
 
 func CreateTempFile(filename string, restore bool) *os.File {
-	//dir := filepath.Join(os.TempDir(), "domp_temp")
 
 	noSepStr := strings.Split(filename, "/")
 
@@ -257,8 +240,6 @@ func CreateTempFile(filename string, restore bool) *os.File {
 	}
 
 	name := noSepStr[len(noSepStr)-1]
-
-	//dir := filepath.Join
 
 	err := os.RemoveAll(dir)
 	if err != nil {
@@ -285,6 +266,8 @@ func CreateTempFile(filename string, restore bool) *os.File {
 			logger.Log.Error(err.Error())
 			return nil
 		}
+
+		defer file.Close()
 
 		buf, errRead := io.ReadAll(file)
 		if errRead == nil {
@@ -321,18 +304,20 @@ func CreateMetricsSave(interval int) *MetricsSave {
 	return &MetricsSave{interval, file}
 }
 
-func RestoreData(cfg *configs.ServerConfig, sStg storage.StorageInterface, path string) *MetricsSave {
+func RestoreData(cfg *configs.ServerConfig, sStg storage.StorageInterface) *MetricsSave {
 	if !cfg.RestoreBool || sStg == nil {
 		logger.Log.Info("Restore data skipped")
-		return nil
+		return CreateMetricsSave(cfg.StoreInterval)
 	}
 
-	file, err := os.OpenFile(path, os.O_RDWR, 0666)
+	file, err := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR, 0666)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return nil
 	}
+
+	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 
