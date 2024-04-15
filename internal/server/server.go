@@ -47,27 +47,34 @@ func (serv *dompserver) TransferMetricsToFile() error {
 		logger.Log.Error(errRead.Error())
 		return errRead
 	}
-	errTrun := serv.savefile.Savefile.Truncate(0)
+
+	savefile, errSf := os.OpenFile(serv.savefile.Savefile.Name(), os.O_RDWR, 0666)
+
+	if errSf != nil {
+		logger.Log.Error(errSf.Error())
+		return errSf
+	}
+
+	errTrun := savefile.Truncate(0)
 	if errTrun != nil {
 		logger.Log.Error(errTrun.Error())
 		return errTrun
 	}
 
-	_, errSeek := serv.savefile.Savefile.Seek(0, 0)
+	_, errSeek := savefile.Seek(0, 0)
 
 	if errSeek != nil {
 		logger.Log.Error(errSeek.Error())
 		return errSeek
 	}
 
-	_, errWrite := serv.savefile.Savefile.Write(buf)
+	_, errWrite := savefile.Write(buf)
 	if errWrite != nil {
 		logger.Log.Error(errWrite.Error())
 		return errWrite
 	}
 
 	logger.Log.Info("Metrics was succesfully transfered to save file")
-	logger.Log.Info(string(buf))
 
 	return nil
 }
@@ -75,13 +82,13 @@ func (serv *dompserver) TransferMetricsToFile() error {
 func (serv *dompserver) SaveCurrentMetrics(b *bytes.Buffer) {
 	switch serv.savefile.StoreInterval {
 	case 0:
-		ReplaceOrAddSaveRow(serv.savefile.Savefile, b)
+		ReplaceOrAddRowToFile(serv.savefile.Savefile, b)
 	default:
-		ReplaceOrAddSaveRow(serv.currentMetrics, b)
+		ReplaceOrAddRowToFile(serv.currentMetrics, b)
 	}
 }
 
-func ReplaceOrAddSaveRow(file *os.File, b *bytes.Buffer) {
+func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer) {
 	openF, err := os.OpenFile(file.Name(), os.O_RDWR, 0666)
 
 	if err != nil {
@@ -97,6 +104,15 @@ func ReplaceOrAddSaveRow(file *os.File, b *bytes.Buffer) {
 	containter := bytes.NewBuffer(newBuf)
 
 	matched := false
+
+	readerBuf := io.NopCloser(strings.NewReader(b.String()))
+	mFromBuf, errBuf := functionslibrary.DecodeMetricJSON(readerBuf)
+
+	if errBuf != nil {
+		logger.Log.Error(errBuf.Error())
+		return
+	}
+
 	for scanner.Scan() {
 
 		readerSave := io.NopCloser(strings.NewReader(string(scanner.Bytes())))
@@ -107,19 +123,12 @@ func ReplaceOrAddSaveRow(file *os.File, b *bytes.Buffer) {
 			return
 		}
 
-		readerBuf := io.NopCloser(strings.NewReader(b.String()))
-		mFromBuf, errBuf := functionslibrary.DecodeMetricJSON(readerBuf)
-
-		if errBuf != nil {
-			logger.Log.Error(errBuf.Error())
-			return
-		}
-
 		if mFromSave.ID == mFromBuf.ID {
 			containter.Write(b.Bytes())
 			matched = true
 		} else {
 			containter.Write(scanner.Bytes())
+			containter.Write([]byte("\n"))
 		}
 	}
 
@@ -260,7 +269,14 @@ func CreateTempFile(filename string, restore bool) *os.File {
 	}
 
 	if restore {
-		file, err := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR, 0666)
+		errMkDir := os.MkdirAll(GetMetricsSaveFileDir(), os.ModePerm)
+
+		if errMkDir != nil {
+			logger.Log.Error(errMkDir.Error())
+			return nil
+		}
+
+		file, err := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR|os.O_CREATE, 0666)
 
 		if err != nil {
 			logger.Log.Error(err.Error())
@@ -282,6 +298,10 @@ func CreateTempFile(filename string, restore bool) *os.File {
 
 func GetMetricsSaveFilePath() string {
 	return filepath.Join(".", "saved", "SavedMetrics-db.json")
+}
+
+func GetMetricsSaveFileDir() string {
+	return filepath.Join(".", "saved")
 }
 
 func CreateMetricsSave(interval int) *MetricsSave {
@@ -310,7 +330,13 @@ func RestoreData(cfg *configs.ServerConfig, sStg storage.StorageInterface) *Metr
 		return CreateMetricsSave(cfg.StoreInterval)
 	}
 
-	file, err := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR, 0666)
+	errMkDir := os.MkdirAll(GetMetricsSaveFileDir(), os.ModePerm)
+	if errMkDir != nil {
+		logger.Log.Error(errMkDir.Error())
+		return nil
+	}
+
+	file, err := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR|os.O_CREATE, 0666)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
