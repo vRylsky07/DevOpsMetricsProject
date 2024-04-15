@@ -7,6 +7,7 @@ import (
 	"DevOpsMetricsProject/internal/storage"
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,6 +17,10 @@ import (
 )
 
 func (serv *dompserver) StartSaveMetricsThread() {
+	if !serv.IsValid() {
+		return
+	}
+
 	if serv.savefile.StoreInterval == 0 {
 		logger.Log.Info("StoreInterval is 0 and metrics will save after update immediately")
 		return
@@ -32,6 +37,10 @@ func (serv *dompserver) StartSaveMetricsThread() {
 }
 
 func (serv *dompserver) TransferMetricsToFile() error {
+	if !serv.IsValid() {
+		return errors.New("DOMP Server is not valid")
+	}
+
 	file, err := os.Open(serv.currentMetrics.Name())
 
 	if err != nil {
@@ -80,6 +89,9 @@ func (serv *dompserver) TransferMetricsToFile() error {
 }
 
 func (serv *dompserver) SaveCurrentMetrics(b *bytes.Buffer) {
+	if !serv.IsValid() {
+		return
+	}
 	switch serv.savefile.StoreInterval {
 	case 0:
 		ReplaceOrAddRowToFile(serv.savefile.Savefile, b)

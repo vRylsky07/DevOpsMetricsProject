@@ -20,7 +20,11 @@ type dompserver struct {
 }
 
 func (serv *dompserver) IsValid() bool {
-	return serv.coreMux != nil || serv.coreStg != nil || serv.currentMetrics != nil || serv.cfg != nil || serv.savefile != nil || serv.savefile.IsValid()
+	if serv.coreMux != nil || serv.coreStg != nil || serv.currentMetrics != nil || serv.cfg != nil || serv.savefile != nil || serv.savefile.IsValid() {
+		return true
+	}
+	logger.Log.Error("DOMP Server is not valid")
+	return false
 }
 
 func Start() {

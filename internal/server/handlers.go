@@ -153,6 +153,10 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 }
 
 func (serv *dompserver) IncorrectRequestHandler(res http.ResponseWriter, req *http.Request) {
+	if !serv.IsValid() {
+		http.Error(res, "Server not working fine please check its initialization!", http.StatusInternalServerError)
+		return
+	}
 	http.Error(res, "Your request is incorrect!", http.StatusBadRequest)
 }
 
@@ -216,6 +220,9 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 // Middlewares
 
 func (serv *dompserver) WithRequestLog(h http.Handler) http.Handler {
+	if !serv.IsValid() {
+		return h
+	}
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -233,6 +240,9 @@ func (serv *dompserver) WithRequestLog(h http.Handler) http.Handler {
 }
 
 func (serv *dompserver) WithResponseLog(h http.Handler) http.Handler {
+	if !serv.IsValid() {
+		return h
+	}
 
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 
@@ -266,6 +276,7 @@ func gzipHandle(next http.Handler) http.Handler {
 }
 
 func DecompressHandler(next http.Handler) http.Handler {
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
 			logger.Log.Info("No decompression")
