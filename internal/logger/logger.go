@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -26,20 +25,18 @@ func (dl *dompLogZap) Error(msg string, fields ...interface{}) {
 		return
 	}
 
-	//var fieldsArr []zapcore.Field = make([]zapcore.Field, len(fields))
+	container := []zapcore.Field{}
 
 	for _, field := range fields {
 		f, ok := field.(zapcore.Field)
 		if ok {
-			fmt.Printf("IS OK %s", f.Key)
-			//fieldsArr = append(fieldsArr, f)
+			container = append(container, f)
 		} else {
-			fmt.Println("NOT OK")
-			return
+			dl.Logger.Error("zapcore.Field convertation failed")
 		}
 	}
-	fmt.Println("WOOOPS")
-	//dl.Logger.Error(msg, fieldsArr...)
+
+	dl.Logger.Error(msg, container...)
 }
 
 func (dl *dompLogZap) Info(msg string, fields ...interface{}) {
@@ -48,24 +45,18 @@ func (dl *dompLogZap) Info(msg string, fields ...interface{}) {
 		return
 	}
 
-	fmt.Println("START FIELD CHECK")
-	//var fieldsArr []zapcore.Field = make([]zapcore.Field, len(fields))
+	container := []zapcore.Field{}
 
 	for _, field := range fields {
 		f, ok := field.(zapcore.Field)
 		if ok {
-			fmt.Printf("IS OK %v", f)
-
-			//zF := zapcore.Field{Key: f.Key, Type: f.Type, Integer: f.Integer, String: f.String, Interface: f.Interface}
-			//fieldsArr = append(fieldsArr, zF)
+			container = append(container, f)
 		} else {
-			fmt.Println("NOT OK")
-			return
+			dl.Logger.Error("zapcore.Field convertation failed")
 		}
 	}
 
-	fmt.Println("WOOOPS")
-	dl.Logger.Info(msg, FiledInt("KEY", 77))
+	dl.Logger.Info(msg, container...)
 }
 
 func (dl *dompLogZap) ErrorHTTP(w http.ResponseWriter, err error, code int) {
@@ -107,12 +98,4 @@ func Initialize(level string, filePrefix string) error {
 
 	Log.Info("The Logger was successfully initialized")
 	return nil
-}
-
-func FiledInt(k string, v int) zapcore.Field {
-	return zap.Int64(k, int64(v))
-}
-
-func FieldString(k string, v string) zapcore.Field {
-	return zap.String(k, v)
 }
