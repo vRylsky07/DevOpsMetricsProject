@@ -1,5 +1,6 @@
 package server
 
+/*
 type statusCheckStruct struct {
 	name         string
 	endpoint     string
@@ -7,7 +8,7 @@ type statusCheckStruct struct {
 	wantedStatus int
 }
 
-/*
+
 func StatusCheckTest(t *testing.T, tests []*statusCheckStruct, dompserv *dompserver) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

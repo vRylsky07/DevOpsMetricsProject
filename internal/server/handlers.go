@@ -249,7 +249,7 @@ func (serv *dompserver) WithResponseLog(h http.Handler) http.Handler {
 		rlw := &ResponceLogWriter{w, 0, 0}
 		h.ServeHTTP(rlw, r)
 
-		logger.Log.Info("Server responsing", zap.Int("status", rlw.statusCode), zap.Int("size", rlw.size))
+		logger.Log.Info("Server responsing", logger.FiledInt("status", rlw.statusCode), logger.FiledInt("size", rlw.size))
 	}
 
 	return http.HandlerFunc(logFn)
