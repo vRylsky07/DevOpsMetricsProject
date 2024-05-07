@@ -98,15 +98,14 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 
 	valueToReturn, gettingValueError := serv.coreStg.GetMetricByName(mTypeConst, mName)
 
-	if gettingValueError == nil {
-		res.Header().Set("Content-Type", "text/html")
-		res.WriteHeader(http.StatusOK)
-		res.Write([]byte(strconv.FormatFloat(valueToReturn, 'f', -1, 64)))
-		return
-	} else {
+	if gettingValueError != nil {
 		http.Error(res, "This metric does not exist or was not been updated yet", http.StatusNotFound)
 		return
 	}
+
+	res.Header().Set("Content-Type", "text/html")
+	res.WriteHeader(http.StatusOK)
+	res.Write([]byte(strconv.FormatFloat(valueToReturn, 'f', -1, 64)))
 }
 
 func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.Request) {
@@ -249,7 +248,7 @@ func (serv *dompserver) WithResponseLog(h http.Handler) http.Handler {
 		rlw := &ResponceLogWriter{w, 0, 0}
 		h.ServeHTTP(rlw, r)
 
-		logger.Log.Info("Server responsing", zap.Int("status", rlw.statusCode), zap.Int("size", rlw.size))
+		logger.Log.Info("Server responding", zap.Int("status", rlw.statusCode), zap.Int("size", rlw.size))
 	}
 
 	return http.HandlerFunc(logFn)

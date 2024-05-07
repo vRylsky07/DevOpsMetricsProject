@@ -1,13 +1,24 @@
 package server
 
-/*
+import (
+	storage_custom_mocks "DevOpsMetricsProject/internal/storage/custom_mock"
+	"flag"
+	"os"
+
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
 type statusCheckStruct struct {
 	name         string
 	endpoint     string
 	method       string
 	wantedStatus int
 }
-
 
 func StatusCheckTest(t *testing.T, tests []*statusCheckStruct, dompserv *dompserver) {
 	for _, tt := range tests {
@@ -63,7 +74,6 @@ func Test_updateMetricHandler(t *testing.T) {
 	StatusCheckTest(t, tests, CreateNewServer())
 }
 
-/*
 func Test_getMainPageHandler(t *testing.T) {
 
 	tests := []*statusCheckStruct{
@@ -74,10 +84,10 @@ func Test_getMainPageHandler(t *testing.T) {
 			wantedStatus: http.StatusOK,
 		},
 	}
-	wtf := CreateNewServer()
-	StatusCheckTest(t, tests, wtf)
-}
 
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	StatusCheckTest(t, tests, CreateNewServer())
+}
 
 func Test_dompserver_GetMetricHandler(t *testing.T) {
 	tests := []*statusCheckStruct{
@@ -95,6 +105,8 @@ func Test_dompserver_GetMetricHandler(t *testing.T) {
 		},
 	}
 
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
 	testServ := CreateNewServer()
 
 	g := map[string]float64{"testGauge": 55.5}
@@ -105,4 +117,3 @@ func Test_dompserver_GetMetricHandler(t *testing.T) {
 
 	StatusCheckTest(t, tests, testServ)
 }
-*/

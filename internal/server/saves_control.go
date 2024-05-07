@@ -27,9 +27,13 @@ func (serv *dompserver) StartSaveMetricsThread() {
 	}
 
 	if serv.savefile != nil && serv.savefile.StoreInterval > 0 && serv.savefile.Savefile != nil {
+
+		ticker := time.NewTicker(time.Duration(serv.savefile.StoreInterval) * time.Second)
+
 		go func() {
+			defer ticker.Stop()
 			for {
-				time.Sleep(time.Duration(serv.savefile.StoreInterval) * time.Second)
+				<-ticker.C
 				serv.TransferMetricsToFile()
 			}
 		}()
@@ -83,7 +87,7 @@ func (serv *dompserver) TransferMetricsToFile() error {
 		return errWrite
 	}
 
-	logger.Log.Info("Metrics was succesfully transfered to save file")
+	logger.Log.Info("Metrics was successfully transfered to save file")
 
 	return nil
 }
@@ -112,32 +116,32 @@ func CreateTempFile(filename string, restore bool) *os.File {
 
 	noSepStr := strings.Split(filename, "/")
 
-	if len(noSepStr) <= 0 {
-		logger.Log.Error("CreateTempFile() failed, filename is invalid")
-		return nil
-	}
-
 	dir := os.TempDir()
+
+	skipMkDir := true
 
 	for i, str := range noSepStr {
 		if i == len(noSepStr)-1 {
 			break
 		}
 		dir = filepath.Join(dir, str)
+		skipMkDir = false
 	}
 
 	name := noSepStr[len(noSepStr)-1]
 
-	err := os.RemoveAll(dir)
-	if err != nil {
-		logger.Log.Error(err.Error())
-		return nil
-	}
+	if !skipMkDir {
+		err := os.RemoveAll(dir)
+		if err != nil {
+			logger.Log.Error(err.Error())
+			return nil
+		}
 
-	err = os.MkdirAll(dir, os.ModePerm)
-	if err != nil {
-		logger.Log.Error(err.Error())
-		return nil
+		err = os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			logger.Log.Error(err.Error())
+			return nil
+		}
 	}
 
 	tFile, errCreate := os.CreateTemp(dir, "*_"+name)

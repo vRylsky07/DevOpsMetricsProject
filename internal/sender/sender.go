@@ -20,13 +20,13 @@ type SenderInterface interface {
 	CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string
 }
 
-type SenderStorage struct {
+type dompsender struct {
 	senderMemStorage storage.StorageInterface
 	stopThread       bool
 	cfg              *configs.ClientConfig
 }
 
-func (sStg *SenderStorage) IsValid() bool {
+func (sStg *dompsender) IsValid() bool {
 	if sStg != nil && sStg.senderMemStorage != nil && sStg.cfg != nil {
 		return true
 	}
@@ -34,19 +34,19 @@ func (sStg *SenderStorage) IsValid() bool {
 	return false
 }
 
-func (sStg *SenderStorage) GetStorage() storage.StorageInterface {
+func (sStg *dompsender) GetStorage() storage.StorageInterface {
 	if !sStg.IsValid() {
 		return nil
 	}
 	return sStg.senderMemStorage
 }
 
-func (sStg *SenderStorage) InitSenderStorage(cfg *configs.ClientConfig, newStg storage.StorageInterface) {
+func (sStg *dompsender) InitSenderStorage(cfg *configs.ClientConfig, newStg storage.StorageInterface) {
 	sStg.senderMemStorage = newStg
 	sStg.cfg = cfg
 }
 
-func (sStg *SenderStorage) UpdateMetrics() {
+func (sStg *dompsender) UpdateMetrics() {
 	if !sStg.IsValid() {
 		return
 	}
@@ -55,17 +55,29 @@ func (sStg *SenderStorage) UpdateMetrics() {
 		sStg.GetStorage().InitMemStorage()
 	}
 
+	var ticker *time.Ticker
+
+	if sStg.cfg.PollInterval >= 0 {
+		ticker = time.NewTicker(time.Duration(sStg.cfg.PollInterval) * time.Second)
+		defer ticker.Stop()
+	}
+
 	for !sStg.stopThread {
-		time.Sleep(time.Duration(sStg.cfg.PollInterval) * time.Second)
+
+		if ticker != nil {
+			<-ticker.C
+		}
+
 		sStg.updateCounterMetrics()
 		sStg.updateGaugeMetrics()
+
 		if sStg.cfg.PollInterval == -1 {
 			return
 		}
 	}
 }
 
-func (sStg *SenderStorage) SendMetricsHTTP() []error {
+func (sStg *dompsender) SendMetricsHTTP() []error {
 	if !sStg.IsValid() {
 		return []error{errors.New("sender Storage is not valid")}
 	}
@@ -74,8 +86,20 @@ func (sStg *SenderStorage) SendMetricsHTTP() []error {
 
 	var catchErrs []error
 
+	var ticker *time.Ticker
+
+	if interval >= 0 {
+		ticker = time.NewTicker(time.Duration(interval) * time.Second)
+		defer ticker.Stop()
+	}
+
 	for !sStg.stopThread {
-		time.Sleep(time.Duration(interval) * time.Second)
+
+		if ticker != nil {
+			<-ticker.C
+		}
+
+		time.NewTimer(time.Duration(interval) * time.Second)
 		if sStg == nil {
 			catchErrs = append(catchErrs, errors.New("SendMetricsHTTP() FAILED! Storage of sender module is equal nil"))
 			return catchErrs
@@ -97,24 +121,24 @@ func (sStg *SenderStorage) SendMetricsHTTP() []error {
 	return catchErrs
 }
 
-func (sStg *SenderStorage) StopAgentProcessing() {
+func (sStg *dompsender) StopAgentProcessing() {
 	if !sStg.IsValid() {
 		return
 	}
 	sStg.stopThread = true
 }
 
-func CreateSender(cfg *configs.ClientConfig) *SenderStorage {
+func CreateSender(cfg *configs.ClientConfig) *dompsender {
 	senderStorage := storage.MemStorage{}
 	senderStorage.InitMemStorage()
 
-	mSender := &SenderStorage{}
+	mSender := &dompsender{}
 	mSender.InitSenderStorage(cfg, &senderStorage)
 
 	return mSender
 }
 
-func (sStg *SenderStorage) updateCounterMetrics() {
+func (sStg *dompsender) updateCounterMetrics() {
 	if !sStg.IsValid() {
 		return
 	}
@@ -126,7 +150,7 @@ func (sStg *SenderStorage) updateCounterMetrics() {
 	sStg.GetStorage().UpdateMetricByName(constants.AddOperation, constants.CounterType, "PollCount", 1)
 }
 
-func (sStg *SenderStorage) updateGaugeMetrics() {
+func (sStg *dompsender) updateGaugeMetrics() {
 	if !sStg.IsValid() {
 		return
 	}
@@ -168,7 +192,7 @@ func (sStg *SenderStorage) updateGaugeMetrics() {
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "TotalAlloc", float64(mFromRuntime.TotalAlloc))
 }
 
-func (sStg *SenderStorage) postRequestByMetricType(compress bool, mType constants.MetricType, mName string, mValue float64, catchErrs *[]error) {
+func (sStg *dompsender) postRequestByMetricType(compress bool, mType constants.MetricType, mName string, mValue float64, catchErrs *[]error) {
 
 	if !sStg.IsValid() {
 		return
