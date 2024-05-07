@@ -14,30 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-/*
-func TestSenderStorage_InitSenderStorage(t *testing.T) {
-	tests := []struct {
-		name   string
-		actual *dompsender
-		args   *mock_storage.MockStorageInterface
-	}{
-		{
-			name:   "Sender storage initialization",
-			actual: &dompsender{},
-			args:   &mock_storage.MockStorageInterface{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.actual.InitSenderStorage(nil, tt.args)
-			assert.NotNil(t, tt.actual)
-			assert.NotNil(t, tt.actual.GetStorage())
-		})
-	}
-}
-*/
-
 func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()

@@ -28,7 +28,7 @@ func (serv *dompserver) IsValid() bool {
 }
 
 func Start() {
-	dompserv := CreateNewServer()
+	dompserv := CreateNewServer(configs.CreateServerConfig())
 	dompserv.StartSaveMetricsThread()
 	if !dompserv.IsValid() {
 		logger.Log.Info(
@@ -49,8 +49,8 @@ func Start() {
 
 }
 
-func CreateNewServer() *dompserver {
-	dompserv := NewDompServer()
+func CreateNewServer(cfg *configs.ServerConfig) *dompserver {
+	dompserv := NewDompServer(cfg)
 
 	dompserv.coreMux.Use(dompserv.WithResponseLog)
 	dompserv.coreMux.Use(dompserv.WithRequestLog)
@@ -71,11 +71,10 @@ func CreateNewServer() *dompserver {
 	return dompserv
 }
 
-func NewDompServer() *dompserver {
+func NewDompServer(cfg *configs.ServerConfig) *dompserver {
 	coreMux := chi.NewRouter()
 	coreStg := &storage.MemStorage{}
 	coreStg.InitMemStorage()
-	cfg := configs.CreateServerConfig()
 	logger.Initialize(cfg.Loglevel, "server_")
 
 	serv := &dompserver{
