@@ -99,7 +99,6 @@ func (sStg *dompsender) SendMetricsHTTP() []error {
 			<-ticker.C
 		}
 
-		time.NewTimer(time.Duration(interval) * time.Second)
 		if sStg == nil {
 			catchErrs = append(catchErrs, errors.New("SendMetricsHTTP() FAILED! Storage of sender module is equal nil"))
 			return catchErrs
