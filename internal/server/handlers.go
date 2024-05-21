@@ -6,6 +6,7 @@ import (
 	"DevOpsMetricsProject/internal/logger"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -214,6 +215,18 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
 	res.Write(respJSON.Bytes())
+}
+
+func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, req *http.Request) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	if err := serv.db.PingContext(ctx); err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
 }
 
 // Middlewares

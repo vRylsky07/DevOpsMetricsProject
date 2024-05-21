@@ -50,6 +50,7 @@ type ServerConfig struct {
 	StoreInterval int    `env:"STORE_INTERVAL"`
 	TempFile      string `env:"FILE_STORAGE_PATH"`
 	RestoreBool   bool   `env:"RESTORE"`
+	DB_DSN        string `env:"DATABASE_DSN"`
 }
 
 func (cfg *ServerConfig) SetServerConfigFlags() {
@@ -59,6 +60,7 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	interval := flag.Int("i", 300, "metrics save interval")
 	temp := flag.String("f", "/tmp/metrics-db.json", "last metrics update")
 	restore := flag.Bool("r", true, "restore data or not")
+	dsn := flag.String("d", "host=localhost user=postgres password=123 dbname=testdb sslmode=disable", "database dsn")
 	flag.Parse()
 
 	cfg.Address = *address
@@ -66,6 +68,7 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	cfg.StoreInterval = *interval
 	cfg.TempFile = *temp
 	cfg.RestoreBool = *restore
+	cfg.DB_DSN = *dsn
 
 	err := env.Parse(cfg)
 	if err != nil {

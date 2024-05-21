@@ -4,10 +4,12 @@ import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
+	"database/sql"
 	"net/http"
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 )
 
@@ -17,6 +19,7 @@ type dompserver struct {
 	currentMetrics *os.File
 	cfg            *configs.ServerConfig
 	savefile       *MetricsSave
+	db             *sql.DB
 }
 
 func (serv *dompserver) IsValid() bool {
@@ -58,6 +61,7 @@ func CreateNewServer(cfg *configs.ServerConfig) *dompserver {
 	dompserv.coreMux.Use(DecompressHandler)
 
 	dompserv.coreMux.Get("/", dompserv.GetMainPageHandler)
+	dompserv.coreMux.Get("/ping", dompserv.PingDatabaseHandler)
 	dompserv.coreMux.Route("/update", func(r chi.Router) {
 		r.Post("/", dompserv.MetricHandlerJSON)
 		r.Get("/", dompserv.IncorrectRequestHandler)
@@ -77,12 +81,18 @@ func NewDompServer(cfg *configs.ServerConfig) *dompserver {
 	coreStg.InitMemStorage()
 	logger.Initialize(cfg.Loglevel, "server_")
 
+	db, err := sql.Open("pgx", cfg.DB_DSN)
+	if err != nil {
+		panic(err)
+	}
+
 	serv := &dompserver{
 		coreMux:        coreMux,
 		coreStg:        coreStg,
 		currentMetrics: CreateTempFile(cfg.TempFile, cfg.RestoreBool),
 		cfg:            cfg,
 		savefile:       RestoreData(cfg, coreStg),
+		db:             db,
 	}
 	return serv
 }
