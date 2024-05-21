@@ -1,14 +1,15 @@
 package sender
 
 import (
+	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/functionslibrary"
+	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
 	"errors"
 	"fmt"
 	"net/http"
 	"runtime"
-	"strconv"
 	"time"
 )
 
@@ -19,47 +20,85 @@ type SenderInterface interface {
 	CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string
 }
 
-type SenderStorage struct {
+type dompsender struct {
 	senderMemStorage storage.StorageInterface
 	stopThread       bool
-	address          string
+	cfg              *configs.ClientConfig
 }
 
-func (sStg *SenderStorage) GetStorage() storage.StorageInterface {
+func (sStg *dompsender) IsValid() bool {
+	if sStg != nil && sStg.senderMemStorage != nil && sStg.cfg != nil {
+		return true
+	}
+	logger.Log.Error("Sender Storage is not valid")
+	return false
+}
+
+func (sStg *dompsender) GetStorage() storage.StorageInterface {
+	if !sStg.IsValid() {
+		return nil
+	}
 	return sStg.senderMemStorage
 }
 
-func (sStg *SenderStorage) SetDomainURL(address string) {
-	sStg.address = address
-}
-
-func (sStg *SenderStorage) InitSenderStorage(newStg storage.StorageInterface) {
+func (sStg *dompsender) InitSenderStorage(cfg *configs.ClientConfig, newStg storage.StorageInterface) {
 	sStg.senderMemStorage = newStg
-	sStg.address = "http://localhost:8080"
+	sStg.cfg = cfg
 }
 
-func (sStg *SenderStorage) UpdateMetrics(pollInterval int) {
+func (sStg *dompsender) UpdateMetrics() {
+	if !sStg.IsValid() {
+		return
+	}
 
 	if sStg.GetStorage() == nil {
 		sStg.GetStorage().InitMemStorage()
 	}
 
+	var ticker *time.Ticker
+
+	if sStg.cfg.PollInterval >= 0 {
+		ticker = time.NewTicker(time.Duration(sStg.cfg.PollInterval) * time.Second)
+		defer ticker.Stop()
+	}
+
 	for !sStg.stopThread {
-		time.Sleep(time.Duration(pollInterval) * time.Second)
+
+		if ticker != nil {
+			<-ticker.C
+		}
+
 		sStg.updateCounterMetrics()
 		sStg.updateGaugeMetrics()
-		if pollInterval == -1 {
+
+		if sStg.cfg.PollInterval == -1 {
 			return
 		}
 	}
 }
 
-func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
+func (sStg *dompsender) SendMetricsHTTP() []error {
+	if !sStg.IsValid() {
+		return []error{errors.New("sender Storage is not valid")}
+	}
+
+	interval := sStg.cfg.ReportInterval
 
 	var catchErrs []error
 
+	var ticker *time.Ticker
+
+	if interval >= 0 {
+		ticker = time.NewTicker(time.Duration(interval) * time.Second)
+		defer ticker.Stop()
+	}
+
 	for !sStg.stopThread {
-		time.Sleep(time.Duration(reportInterval) * time.Second)
+
+		if ticker != nil {
+			<-ticker.C
+		}
+
 		if sStg == nil {
 			catchErrs = append(catchErrs, errors.New("SendMetricsHTTP() FAILED! Storage of sender module is equal nil"))
 			return catchErrs
@@ -68,60 +107,40 @@ func (sStg *SenderStorage) SendMetricsHTTP(reportInterval int) []error {
 		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
 
 		for nameGauge, valueGauge := range gauge {
-			finalURL := sStg.CreateMetricURL(constants.GaugeType, sStg.address, nameGauge, valueGauge)
-			resp, err := http.Post(finalURL, "text/plain", nil)
-			if err != nil {
-				catchErrs = append(catchErrs, errors.New("Server is not responding. URL to send was: "+finalURL))
-				continue
-			}
-			defer resp.Body.Close()
-			fmt.Println(finalURL, "Gauge update was successful! Status code: ", resp.StatusCode)
+			sStg.postRequestByMetricType(true, constants.GaugeType, nameGauge, valueGauge, &catchErrs)
 		}
 
 		for nameCounter, valueCounter := range counter {
-			finalURL := sStg.CreateMetricURL(constants.CounterType, sStg.address, nameCounter, float64(valueCounter))
-			resp, err := http.Post(finalURL, "text/plain", nil)
-			if err != nil {
-				catchErrs = append(catchErrs, errors.New("Server is not responding. URL to send was: "+finalURL))
-				continue
-			}
-			defer resp.Body.Close()
-			fmt.Println(finalURL, " Counter update was successful! Status code: ", resp.StatusCode)
+			sStg.postRequestByMetricType(true, constants.CounterType, nameCounter, float64(valueCounter), &catchErrs)
 		}
-		if reportInterval == -1 {
+		if interval == -1 {
 			return catchErrs
 		}
 	}
 	return catchErrs
 }
 
-func (sStg *SenderStorage) StopAgentProcessing() {
+func (sStg *dompsender) StopAgentProcessing() {
+	if !sStg.IsValid() {
+		return
+	}
 	sStg.stopThread = true
 }
 
-func (sStg *SenderStorage) CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string {
-	mTypeString := ""
-
-	switch mType {
-	case constants.GaugeType:
-		mTypeString = "/gauge/"
-	case constants.CounterType:
-		mTypeString = "/counter/"
-	}
-	return "http://" + mainURL + "/update" + mTypeString + name + "/" + strconv.FormatFloat(value, 'f', 3, 64)
-}
-
-func CreateSender() *SenderStorage {
+func CreateSender(cfg *configs.ClientConfig) *dompsender {
 	senderStorage := storage.MemStorage{}
 	senderStorage.InitMemStorage()
 
-	mSender := &SenderStorage{}
-	mSender.InitSenderStorage(&senderStorage)
+	mSender := &dompsender{}
+	mSender.InitSenderStorage(cfg, &senderStorage)
 
 	return mSender
 }
 
-func (sStg *SenderStorage) updateCounterMetrics() {
+func (sStg *dompsender) updateCounterMetrics() {
+	if !sStg.IsValid() {
+		return
+	}
 
 	if sStg.GetStorage() == nil {
 		sStg.GetStorage().InitMemStorage()
@@ -130,7 +149,10 @@ func (sStg *SenderStorage) updateCounterMetrics() {
 	sStg.GetStorage().UpdateMetricByName(constants.AddOperation, constants.CounterType, "PollCount", 1)
 }
 
-func (sStg *SenderStorage) updateGaugeMetrics() {
+func (sStg *dompsender) updateGaugeMetrics() {
+	if !sStg.IsValid() {
+		return
+	}
 
 	if sStg.GetStorage() == nil {
 		sStg.GetStorage().InitMemStorage()
@@ -167,4 +189,60 @@ func (sStg *SenderStorage) updateGaugeMetrics() {
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "StackSys", float64(mFromRuntime.StackSys))
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "Sys", float64(mFromRuntime.Sys))
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "TotalAlloc", float64(mFromRuntime.TotalAlloc))
+}
+
+func (sStg *dompsender) postRequestByMetricType(compress bool, mType constants.MetricType, mName string, mValue float64, catchErrs *[]error) {
+
+	if !sStg.IsValid() {
+		return
+	}
+
+	sendURL := "http://" + sStg.cfg.Address + "/update/"
+
+	mJSON, jsonErr := functionslibrary.EncodeMetricJSON(mType, mName, mValue)
+
+	if jsonErr != nil {
+		*catchErrs = append(*catchErrs, jsonErr)
+		logger.Log.Error(jsonErr.Error())
+		return
+	}
+
+	if compress {
+		zipped, compErr := functionslibrary.CompressData(mJSON.Bytes())
+		if compErr == nil {
+			mJSON = zipped
+		}
+	}
+
+	client := http.Client{}
+
+	req, errReq := http.NewRequest("POST", sendURL, mJSON)
+
+	if errReq != nil {
+		logger.Log.Error(errReq.Error())
+		return
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
+	if compress {
+		req.Header.Add("Content-Encoding", "gzip ")
+	}
+
+	resp, errDo := client.Do(req)
+
+	if errDo != nil {
+		errStr := "Server is not responding. URL to send was: " + sendURL
+		*catchErrs = append(*catchErrs, errors.New(errStr))
+		logger.Log.Error(errStr)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		logger.Log.Info(fmt.Sprintf(`Metric %s update failed! Status code: %d`, mName, resp.StatusCode))
+		return
+	}
+
+	logger.Log.Info(fmt.Sprintf(`Metric %s update was successful! Status code: %d`, mName, resp.StatusCode))
 }

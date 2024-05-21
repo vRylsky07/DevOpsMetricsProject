@@ -1,9 +1,11 @@
 package sender
 
 import (
+	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
-	senderstorage_custom_mocks "DevOpsMetricsProject/internal/sender/custom_mocks"
+	storage_custom_mocks "DevOpsMetricsProject/internal/storage/custom_mock"
 	mock_storage "DevOpsMetricsProject/internal/storage/mocks"
+
 	"fmt"
 	"strings"
 	"testing"
@@ -12,28 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSenderStorage_InitSenderStorage(t *testing.T) {
-	tests := []struct {
-		name   string
-		actual *SenderStorage
-		args   *mock_storage.MockStorageInterface
-	}{
-		{
-			name:   "Sender storage initialization",
-			actual: &SenderStorage{},
-			args:   &mock_storage.MockStorageInterface{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.actual.InitSenderStorage(tt.args)
-			assert.NotNil(t, tt.actual)
-			assert.NotNil(t, tt.actual.GetStorage())
-		})
-	}
-}
-
 func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
@@ -41,10 +21,10 @@ func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		actual *SenderStorage
+		actual *dompsender
 	}{{
 		name:   "updateGaugeMetrics",
-		actual: &SenderStorage{storageChecker, false, ""},
+		actual: &dompsender{storageChecker, false, &configs.ClientConfig{}},
 	},
 	}
 	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.GaugeType, gomock.Any(), gomock.Any()).Times(28)
@@ -63,10 +43,10 @@ func TestSenderStorage_updateCounterMetrics(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		actual *SenderStorage
+		actual *dompsender
 	}{{
 		name:   "updateCounterMetrics",
-		actual: &SenderStorage{storageChecker, false, ""},
+		actual: &dompsender{storageChecker, false, &configs.ClientConfig{}},
 	},
 	}
 	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.CounterType, gomock.Any(), gomock.Any()).Times(1)
@@ -85,50 +65,18 @@ func TestSenderStorage_UpdateMetrics(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		actual *SenderStorage
+		actual *dompsender
 	}{{
 		name:   "Update Metrics",
-		actual: &SenderStorage{storageChecker, false, ""},
+		actual: &dompsender{storageChecker, false, &configs.ClientConfig{}},
 	},
 	}
 	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.GaugeType, gomock.Any(), gomock.Any()).AnyTimes()
 	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.CounterType, gomock.Any(), gomock.Any()).AnyTimes().Return()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.actual.UpdateMetrics(-1)
-		})
-	}
-}
-
-func TestSenderStorage_CreateMetricURL(t *testing.T) {
-	sStg := &SenderStorage{}
-
-	type args struct {
-		mType   constants.MetricType
-		mainURL string
-		name    string
-		value   float64
-	}
-
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{{
-		name: "CreateMetricURL main case(gauge metric type)",
-		args: args{constants.GaugeType, "test.url", "testGauge", 64.51},
-		want: "http://test.url/update/gauge/testGauge/64.510",
-	}, {
-		name: "CreateMetricURL main case(counter metric type)",
-		args: args{constants.CounterType, "test.url", "testGauge", 37},
-		want: "http://test.url/update/counter/testGauge/37.000",
-	},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := sStg.CreateMetricURL(tt.args.mType, tt.args.mainURL, tt.args.name, tt.args.value); got != tt.want {
-				t.Errorf("SenderStorage.CreateMetricURL() = %v, want %v", got, tt.want)
-			}
+			tt.actual.cfg.PollInterval = -1
+			tt.actual.UpdateMetrics()
 		})
 	}
 }
@@ -136,20 +84,22 @@ func TestSenderStorage_CreateMetricURL(t *testing.T) {
 func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 	g := map[string]float64{"testGauge": 1}
 	c := map[string]int{"testCounter": 2}
-	testingStorage := &senderstorage_custom_mocks.SenderStorageMock{Gauge: g, Counter: c}
+
+	testingStorage := &storage_custom_mocks.StorageMockCustom{Gauge: g, Counter: c}
 
 	tests := []struct {
 		name string
-		sStg *SenderStorage
+		sStg *dompsender
 	}{{
 		name: "Send metrics to server HTTP",
-		sStg: &SenderStorage{testingStorage, false, "http://localhost:8080"},
+		sStg: &dompsender{testingStorage, false, &configs.ClientConfig{}},
 	},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := tt.sStg.SendMetricsHTTP(-1)
+			tt.sStg.cfg.ReportInterval = -1
+			errs := tt.sStg.SendMetricsHTTP()
 
 			g, c := tt.sStg.GetStorage().ReadMemStorageFields()
 			if len(errs) != (len(g) + len(c)) {
