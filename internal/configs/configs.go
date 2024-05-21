@@ -50,7 +50,7 @@ type ServerConfig struct {
 	StoreInterval int    `env:"STORE_INTERVAL"`
 	TempFile      string `env:"FILE_STORAGE_PATH"`
 	RestoreBool   bool   `env:"RESTORE"`
-	DB_DSN        string `env:"DATABASE_DSN"`
+	DatabaseDSN   string `env:"DATABASE_DSN"`
 }
 
 func (cfg *ServerConfig) SetServerConfigFlags() {
@@ -68,7 +68,7 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	cfg.StoreInterval = *interval
 	cfg.TempFile = *temp
 	cfg.RestoreBool = *restore
-	cfg.DB_DSN = *dsn
+	cfg.DatabaseDSN = *dsn
 
 	err := env.Parse(cfg)
 	if err != nil {
