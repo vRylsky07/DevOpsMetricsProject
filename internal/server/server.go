@@ -81,9 +81,10 @@ func NewDompServer(cfg *configs.ServerConfig) *dompserver {
 	coreStg.InitMemStorage()
 	logger.Initialize(cfg.Loglevel, "server_")
 
-	db, err := sql.Open("pgx", cfg.DatabaseDSN)
+	db, err := RunDB(cfg.DatabaseDSN)
+
 	if err != nil {
-		panic(err)
+		return nil
 	}
 
 	serv := &dompserver{
