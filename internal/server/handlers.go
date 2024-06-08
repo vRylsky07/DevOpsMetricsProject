@@ -138,9 +138,11 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 			serv.coreStg.UpdateMetricByName(constants.AddOperation, mTypeConst, mName, valueInFloat)
 		}
 
-		mJSON, errEnc := functionslibrary.EncodeMetricJSON(mTypeConst, mName, valueInFloat)
-		if errEnc == nil {
-			serv.SaveCurrentMetrics(mJSON)
+		if serv.cfg.SaveMode == constants.FileMode {
+			mJSON, errEnc := functionslibrary.EncodeMetricJSON(mTypeConst, mName, valueInFloat)
+			if errEnc == nil {
+				serv.SaveCurrentMetrics(mJSON)
+			}
 		}
 
 		res.Header().Set("Content-Type", "text/html")
@@ -199,10 +201,12 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 
 	newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
 
-	if isUpdate {
-		updatedJSON, err := functionslibrary.EncodeMetricJSON(mType, mReceiver.ID, newValue)
-		if err == nil {
-			serv.SaveCurrentMetrics(updatedJSON)
+	if serv.cfg.SaveMode == constants.FileMode {
+		if isUpdate {
+			updatedJSON, err := functionslibrary.EncodeMetricJSON(mType, mReceiver.ID, newValue)
+			if err == nil {
+				serv.SaveCurrentMetrics(updatedJSON)
+			}
 		}
 	}
 

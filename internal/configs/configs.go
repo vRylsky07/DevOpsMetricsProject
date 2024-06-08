@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"DevOpsMetricsProject/internal/constants"
 	"errors"
 	"flag"
 	"log"
@@ -51,6 +52,7 @@ type ServerConfig struct {
 	TempFile      string `env:"FILE_STORAGE_PATH"`
 	RestoreBool   bool   `env:"RESTORE"`
 	DatabaseDSN   string `env:"DATABASE_DSN"`
+	SaveMode      constants.SaveMode
 }
 
 func (cfg *ServerConfig) SetServerConfigFlags() {
@@ -63,6 +65,7 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	dsn := flag.String("d", "host=localhost user=postgres password=123 dbname=testdb sslmode=disable", "database dsn")
 	flag.Parse()
 
+	cfg.SaveMode = constants.DatabaseMode
 	cfg.Address = *address
 	cfg.Loglevel = *lvl
 	cfg.StoreInterval = *interval

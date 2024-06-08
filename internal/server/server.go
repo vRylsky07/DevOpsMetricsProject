@@ -2,6 +2,7 @@ package server
 
 import (
 	"DevOpsMetricsProject/internal/configs"
+	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
 	"database/sql"
@@ -32,7 +33,11 @@ func (serv *dompserver) IsValid() bool {
 
 func Start() {
 	dompserv := CreateNewServer(configs.CreateServerConfig())
-	dompserv.StartSaveMetricsThread()
+
+	if dompserv.cfg.SaveMode == constants.FileMode {
+		dompserv.StartSaveMetricsThread()
+	}
+
 	if !dompserv.IsValid() {
 		logger.Log.Info(
 			"Server initialization failed!  ",
@@ -46,6 +51,7 @@ func Start() {
 	}
 	logger.Log.Info("Server was successfully initialized!")
 	err := http.ListenAndServe(dompserv.cfg.Address, dompserv.coreMux)
+
 	if err != nil {
 		panic(err)
 	}
@@ -81,16 +87,26 @@ func NewDompServer(cfg *configs.ServerConfig) *dompserver {
 	coreStg.InitMemStorage()
 	logger.Initialize(cfg.Loglevel, "server_")
 
-	db, err := RunDB(cfg.DatabaseDSN)
+	var currentMetrics *os.File = nil
+	var db *sql.DB
 
-	if err != nil {
-		return nil
+	switch cfg.SaveMode {
+	case constants.DatabaseMode:
+		var err error
+		db, err = RunDB(cfg.DatabaseDSN)
+
+		if err != nil {
+			return nil
+		}
+
+	case constants.FileMode:
+		currentMetrics = CreateTempFile(cfg.TempFile, cfg.RestoreBool)
 	}
 
 	serv := &dompserver{
 		coreMux:        coreMux,
 		coreStg:        coreStg,
-		currentMetrics: CreateTempFile(cfg.TempFile, cfg.RestoreBool),
+		currentMetrics: currentMetrics,
 		cfg:            cfg,
 		savefile:       RestoreData(cfg, coreStg),
 		db:             db,

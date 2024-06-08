@@ -14,3 +14,11 @@ const (
 	AddOperation UpdateOperation = iota
 	RenewOperation
 )
+
+type SaveMode int
+
+const (
+	DatabaseMode SaveMode = iota
+	FileMode
+	InMemoryMode
+)

@@ -2,6 +2,7 @@ package server
 
 import (
 	"DevOpsMetricsProject/internal/configs"
+	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
@@ -199,6 +200,11 @@ func CreateMetricsSave(interval int) *MetricsSave {
 }
 
 func RestoreData(cfg *configs.ServerConfig, sStg storage.StorageInterface) *MetricsSave {
+
+	if cfg.SaveMode != constants.FileMode {
+		return nil
+	}
+
 	if !cfg.RestoreBool || sStg == nil {
 		logger.Log.Info("Restore data skipped")
 		return CreateMetricsSave(cfg.StoreInterval)
