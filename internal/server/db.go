@@ -7,6 +7,7 @@ import (
 )
 
 func RunDB(dsn string) (*sql.DB, error) {
+	logger.Log.Info("DB: " + dsn)
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, err

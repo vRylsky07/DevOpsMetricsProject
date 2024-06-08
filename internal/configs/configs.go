@@ -62,10 +62,9 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	interval := flag.Int("i", 300, "metrics save interval")
 	temp := flag.String("f", "/tmp/metrics-db.json", "last metrics update")
 	restore := flag.Bool("r", true, "restore data or not")
-	dsn := flag.String("d", "host=localhost:5432 user=postgres password=123 dbname=testdb sslmode=disable", "database dsn")
+	dsn := flag.String("d", "host=localhost user=postgres password=123 dbname=testdb sslmode=disable", "database dsn")
 	flag.Parse()
 
-	cfg.SaveMode = constants.DatabaseMode
 	cfg.Address = *address
 	cfg.Loglevel = *lvl
 	cfg.StoreInterval = *interval
@@ -77,6 +76,12 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	if cfg.DatabaseDSN != "" {
+		cfg.SaveMode = constants.DatabaseMode
+	}
+
+	cfg.SaveMode = constants.DatabaseMode
 
 }
 

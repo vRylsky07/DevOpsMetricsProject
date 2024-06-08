@@ -50,6 +50,7 @@ func Start() {
 		return
 	}
 	logger.Log.Info("Server was successfully initialized!")
+
 	err := http.ListenAndServe(dompserv.cfg.Address, dompserv.coreMux)
 
 	if err != nil {
