@@ -2,6 +2,7 @@ package server
 
 import (
 	"DevOpsMetricsProject/internal/configs"
+	"DevOpsMetricsProject/internal/constants"
 	storage_custom_mocks "DevOpsMetricsProject/internal/storage/custom_mock"
 
 	"net/http"
@@ -70,7 +71,7 @@ func Test_updateMetricHandler(t *testing.T) {
 			wantedStatus: http.StatusNotFound,
 		},
 	}
-	StatusCheckTest(t, tests, CreateNewServer(&configs.ServerConfig{}))
+	StatusCheckTest(t, tests, CreateNewServer(&configs.ServerConfig{SaveMode: constants.FileMode}))
 }
 
 func Test_getMainPageHandler(t *testing.T) {
@@ -84,7 +85,7 @@ func Test_getMainPageHandler(t *testing.T) {
 		},
 	}
 
-	StatusCheckTest(t, tests, CreateNewServer(&configs.ServerConfig{}))
+	StatusCheckTest(t, tests, CreateNewServer(&configs.ServerConfig{SaveMode: constants.FileMode}))
 }
 
 func Test_dompserver_GetMetricHandler(t *testing.T) {
@@ -103,7 +104,7 @@ func Test_dompserver_GetMetricHandler(t *testing.T) {
 		},
 	}
 
-	testServ := CreateNewServer(&configs.ServerConfig{})
+	testServ := CreateNewServer(&configs.ServerConfig{SaveMode: constants.FileMode})
 
 	g := map[string]float64{"testGauge": 55.5}
 	c := map[string]int{"testCounter": 55}
