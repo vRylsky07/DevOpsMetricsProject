@@ -20,9 +20,7 @@ type ClientConfig struct {
 
 func (cfg *ClientConfig) SetClientConfigFlags() {
 
-	//localhost:8080
-
-	address := flag.String("a", "0.0.0.0:8080", "input endpoint address")
+	address := flag.String("a", "localhost:8080", "input endpoint address")
 	pollInterval := flag.Int("p", 2, "input metrics update interval in seconds")
 	reportInterval := flag.Int("r", 10, "input interval to send metrics in seconds")
 	lvl := flag.String("l", "info", "log level")
@@ -64,7 +62,7 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	interval := flag.Int("i", 300, "metrics save interval")
 	temp := flag.String("f", "/tmp/metrics-db.json", "last metrics update")
 	restore := flag.Bool("r", true, "restore data or not")
-	dsn := flag.String("d", "host=localhost user=postgres password=123 dbname=testdb sslmode=disable", "database dsn")
+	dsn := flag.String("d", "host=localhost:5432 user=postgres password=123 dbname=testdb sslmode=disable", "database dsn")
 	flag.Parse()
 
 	cfg.SaveMode = constants.DatabaseMode
