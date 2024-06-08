@@ -77,6 +77,7 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 }
 
 func CreateServerConfig() *ServerConfig {
