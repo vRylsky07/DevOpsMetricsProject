@@ -20,7 +20,9 @@ type ClientConfig struct {
 
 func (cfg *ClientConfig) SetClientConfigFlags() {
 
-	address := flag.String("a", "localhost:8080", "input endpoint address")
+	//localhost:8080
+
+	address := flag.String("a", "0.0.0.0:8080", "input endpoint address")
 	pollInterval := flag.Int("p", 2, "input metrics update interval in seconds")
 	reportInterval := flag.Int("r", 10, "input interval to send metrics in seconds")
 	lvl := flag.String("l", "info", "log level")
