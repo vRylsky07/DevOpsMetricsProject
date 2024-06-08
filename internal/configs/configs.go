@@ -65,7 +65,7 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	dsn := flag.String("d", "", "database dsn")
 	flag.Parse()
 
-	cfg.SaveMode = constants.InMemoryMode
+	cfg.SaveMode = constants.FileMode
 	cfg.Address = *address
 	cfg.Loglevel = *lvl
 	cfg.StoreInterval = *interval
@@ -81,9 +81,6 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	if cfg.DatabaseDSN != "" {
 		cfg.SaveMode = constants.DatabaseMode
 	}
-
-	cfg.SaveMode = constants.FileMode
-
 }
 
 func CreateServerConfig() *ServerConfig {
