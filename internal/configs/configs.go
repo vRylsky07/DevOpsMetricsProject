@@ -82,6 +82,8 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 		cfg.SaveMode = constants.DatabaseMode
 	}
 
+	cfg.SaveMode = constants.FileMode
+
 }
 
 func CreateServerConfig() *ServerConfig {
