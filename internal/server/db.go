@@ -75,4 +75,5 @@ func PrepareTablesDB(db *sql.DB) error {
 	}
 
 	return nil
+	
 }
