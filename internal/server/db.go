@@ -1,9 +1,14 @@
 package server
 
 import (
+	"DevOpsMetricsProject/internal/constants"
+	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/logger"
 	"context"
 	"database/sql"
+	"fmt"
+
+	"go.uber.org/zap"
 )
 
 func RunDB(dsn string) (*sql.DB, error) {
@@ -75,5 +80,26 @@ func PrepareTablesDB(db *sql.DB) error {
 	}
 
 	return nil
-	
+
+}
+
+func UpdateMetricDB(db *sql.DB, mType constants.MetricType, mName string, mValue float64) error {
+
+	q := fmt.Sprintf(`INSERT INTO %s (name, value)
+	VALUES ($1, $2)
+	ON CONFLICT (name)
+	DO UPDATE SET
+	name=EXCLUDED.name,
+	value=$3;`, functionslibrary.ConvertMetricTypeToString(mType))
+
+	_, err := db.ExecContext(context.TODO(), q, mName, mValue, mValue)
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return err
+	}
+
+	logger.Log.Info("Database update metric successfull.", zap.String("MetricName", mName), zap.Float64("Value", mValue))
+
+	return nil
 }

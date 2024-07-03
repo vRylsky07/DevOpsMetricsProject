@@ -138,7 +138,10 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 			serv.coreStg.UpdateMetricByName(constants.AddOperation, mTypeConst, mName, valueInFloat)
 		}
 
-		if serv.cfg.SaveMode == constants.FileMode {
+		switch serv.cfg.SaveMode {
+		case constants.DatabaseMode:
+			UpdateMetricDB(serv.db, mTypeConst, mName, valueInFloat)
+		case constants.FileMode:
 			mJSON, errEnc := functionslibrary.EncodeMetricJSON(mTypeConst, mName, valueInFloat)
 			if errEnc == nil {
 				serv.SaveCurrentMetrics(mJSON)
@@ -201,12 +204,15 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 
 	newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
 
-	if serv.cfg.SaveMode == constants.FileMode {
-		if isUpdate {
+	if isUpdate {
+		switch serv.cfg.SaveMode {
+		case constants.FileMode:
 			updatedJSON, err := functionslibrary.EncodeMetricJSON(mType, mReceiver.ID, newValue)
 			if err == nil {
 				serv.SaveCurrentMetrics(updatedJSON)
 			}
+		case constants.DatabaseMode:
+			UpdateMetricDB(serv.db, mType, mReceiver.ID, newValue)
 		}
 	}
 
