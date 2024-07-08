@@ -34,7 +34,7 @@ func RunDB(dsn string) (*sql.DB, error) {
 
 func CheckTableExist(db *sql.DB, tableName string) bool {
 
-	row := db.QueryRowContext(context.Background(),
+	row := db.QueryRowContext(context.TODO(),
 		"SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = $1);", tableName)
 
 	isExisted := false
@@ -51,14 +51,21 @@ func CheckTableExist(db *sql.DB, tableName string) bool {
 
 func PrepareTablesDB(db *sql.DB) error {
 
+	tx, err := db.Begin()
+
+	if err != nil {
+		return err
+	}
+
 	if !CheckTableExist(db, "gauge") {
-		_, errCreate := db.ExecContext(context.TODO(), `CREATE TABLE gauge(
+		_, errCreate := tx.ExecContext(context.TODO(), `CREATE TABLE gauge(
 			"name" varchar PRIMARY KEY,
 			"value" double precision
 			);`)
 
 		if errCreate != nil {
 			logger.Log.Error(errCreate.Error())
+			tx.Rollback()
 			return errCreate
 		}
 
@@ -66,24 +73,30 @@ func PrepareTablesDB(db *sql.DB) error {
 	}
 
 	if !CheckTableExist(db, "counter") {
-		_, errCreate := db.ExecContext(context.TODO(), `CREATE TABLE counter(
+		_, errCreate := tx.ExecContext(context.TODO(), `CREATE TABLE counter(
 			"name" varchar PRIMARY KEY,
 			"value" int
 			);`)
 
 		if errCreate != nil {
 			logger.Log.Error(errCreate.Error())
+			tx.Rollback()
 			return errCreate
 		}
 
 		logger.Log.Info("Database table named 'counter' was been successfully created")
 	}
 
-	return nil
-
+	return tx.Commit()
 }
 
 func UpdateMetricDB(db *sql.DB, mType constants.MetricType, mName string, mValue float64) error {
+
+	tx, errBegin := db.Begin()
+
+	if errBegin != nil {
+		return errBegin
+	}
 
 	q := fmt.Sprintf(`INSERT INTO %s (name, value)
 	VALUES ($1, $2)
@@ -92,14 +105,15 @@ func UpdateMetricDB(db *sql.DB, mType constants.MetricType, mName string, mValue
 	name=EXCLUDED.name,
 	value=$3;`, functionslibrary.ConvertMetricTypeToString(mType))
 
-	_, err := db.ExecContext(context.TODO(), q, mName, mValue, mValue)
+	_, err := tx.ExecContext(context.TODO(), q, mName, mValue, mValue)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
+		tx.Rollback()
 		return err
 	}
 
 	logger.Log.Info("Database update metric successfull.", zap.String("MetricName", mName), zap.Float64("Value", mValue))
 
-	return nil
+	return tx.Commit()
 }
