@@ -85,14 +85,12 @@ func (sStg *dompsender) SendMetricsHTTP() []error {
 		return []error{errors.New("sender Storage is not valid")}
 	}
 
-	interval := sStg.cfg.ReportInterval
-
 	var catchErrs []error
 
 	var ticker *time.Ticker
 
-	if interval >= 0 {
-		ticker = time.NewTicker(time.Duration(interval) * time.Second)
+	if sStg.cfg.ReportInterval >= 0 {
+		ticker = time.NewTicker(time.Duration(sStg.cfg.ReportInterval) * time.Second)
 		defer ticker.Stop()
 	}
 
@@ -102,36 +100,10 @@ func (sStg *dompsender) SendMetricsHTTP() []error {
 			<-ticker.C
 		}
 
-		if sStg == nil {
-			catchErrs = append(catchErrs, errors.New("SendMetricsHTTP() FAILED! Storage of sender module is equal nil"))
+		sStg.ManageRequests(&catchErrs)
+
+		if sStg.cfg.ReportInterval == -1 {
 			return catchErrs
-		}
-
-		var mJSON *bytes.Buffer
-		var errJSON error
-
-		switch sStg.cfg.UseBatches {
-		case true:
-			mJSON, errJSON = funcslib.EncodeBatchJSON(sStg.GetStorage())
-			sStg.postRequestByMetricType("batch", mJSON, errJSON, &catchErrs)
-
-		case false:
-
-			gauge, counter := sStg.GetStorage().ReadMemStorageFields()
-
-			for nameGauge, valueGauge := range gauge {
-				mJSON, errJSON = funcslib.EncodeMetricJSON(constants.GaugeType, nameGauge, valueGauge)
-				sStg.postRequestByMetricType(nameGauge, mJSON, errJSON, &catchErrs)
-			}
-
-			for nameCounter, valueCounter := range counter {
-				mJSON, errJSON = funcslib.EncodeMetricJSON(constants.GaugeType, nameCounter, float64(valueCounter))
-				sStg.postRequestByMetricType(nameCounter, mJSON, errJSON, &catchErrs)
-			}
-
-			if interval == -1 {
-				return catchErrs
-			}
 		}
 	}
 	return catchErrs
@@ -266,4 +238,28 @@ func (sStg *dompsender) postRequestByMetricType(mName string, mJSON *bytes.Buffe
 	}
 
 	logger.Log.Info(fmt.Sprintf(`Metric%s update was successful! Status code: %d`, batchStr, resp.StatusCode), zap.String("MetricName", mName))
+}
+
+func (sStg *dompsender) ManageRequests(catchErrs *[]error) {
+	var mJSON *bytes.Buffer
+	var errJSON error
+
+	switch sStg.cfg.UseBatches {
+	case true:
+		mJSON, errJSON = funcslib.EncodeBatchJSON(sStg.GetStorage())
+		sStg.postRequestByMetricType("batch", mJSON, errJSON, catchErrs)
+	case false:
+
+		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
+
+		for nameGauge, valueGauge := range gauge {
+			mJSON, errJSON = funcslib.EncodeMetricJSON(constants.GaugeType, nameGauge, valueGauge)
+			sStg.postRequestByMetricType(nameGauge, mJSON, errJSON, catchErrs)
+		}
+
+		for nameCounter, valueCounter := range counter {
+			mJSON, errJSON = funcslib.EncodeMetricJSON(constants.GaugeType, nameCounter, float64(valueCounter))
+			sStg.postRequestByMetricType(nameCounter, mJSON, errJSON, catchErrs)
+		}
+	}
 }

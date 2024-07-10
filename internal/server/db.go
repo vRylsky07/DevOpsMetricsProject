@@ -2,7 +2,7 @@ package server
 
 import (
 	"DevOpsMetricsProject/internal/constants"
-	functionslibrary "DevOpsMetricsProject/internal/funcslib"
+	funcslib "DevOpsMetricsProject/internal/funcslib"
 	"DevOpsMetricsProject/internal/logger"
 	"context"
 	"database/sql"
@@ -103,7 +103,7 @@ func UpdateMetricDB(db *sql.DB, mType constants.MetricType, mName string, mValue
 	ON CONFLICT (name)
 	DO UPDATE SET
 	name=EXCLUDED.name,
-	value=$3;`, functionslibrary.ConvertMetricTypeToString(mType))
+	value=$3;`, funcslib.ConvertMetricTypeToString(mType))
 
 	_, err := tx.ExecContext(context.TODO(), q, mName, mValue, mValue)
 

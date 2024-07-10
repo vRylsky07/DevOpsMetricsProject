@@ -2,7 +2,7 @@ package server
 
 import (
 	"DevOpsMetricsProject/internal/constants"
-	functionslibrary "DevOpsMetricsProject/internal/funcslib"
+	funcslib "DevOpsMetricsProject/internal/funcslib"
 	"DevOpsMetricsProject/internal/logger"
 	"bytes"
 	"compress/gzip"
@@ -90,7 +90,7 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	mTypeConst := functionslibrary.ConvertStringToMetricType(mType)
+	mTypeConst := funcslib.ConvertStringToMetricType(mType)
 
 	if mTypeConst == constants.NoneType {
 		http.Error(res, "Your request is incorrect! Metric type conversion failed!", http.StatusBadRequest)
@@ -125,7 +125,7 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 		return
 	}
 
-	mTypeConst := functionslibrary.ConvertStringToMetricType(mType)
+	mTypeConst := funcslib.ConvertStringToMetricType(mType)
 
 	valueInFloat, err := strconv.ParseFloat(mValue, 64)
 
@@ -142,7 +142,7 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 		case constants.DatabaseMode:
 			UpdateMetricDB(serv.db, mTypeConst, mName, valueInFloat)
 		case constants.FileMode:
-			mJSON, errEnc := functionslibrary.EncodeMetricJSON(mTypeConst, mName, valueInFloat)
+			mJSON, errEnc := funcslib.EncodeMetricJSON(mTypeConst, mName, valueInFloat)
 			if errEnc == nil {
 				serv.SaveCurrentMetrics(mJSON)
 			}
@@ -184,7 +184,7 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 
 	reqCopy := io.NopCloser(strings.NewReader(body.String()))
 
-	mReceiver, err := functionslibrary.DecodeMetricJSON(reqCopy)
+	mReceiver, err := funcslib.DecodeMetricJSON(reqCopy)
 
 	if err != nil {
 		logger.Log.ErrorHTTP(res, err, http.StatusBadRequest)
@@ -193,10 +193,10 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 
 	var newValue float64
 
-	mType := functionslibrary.ConvertStringToMetricType(mReceiver.MType)
+	mType := funcslib.ConvertStringToMetricType(mReceiver.MType)
 
 	if isUpdate {
-		err := functionslibrary.UpdateStorageInterfaceByMetricStruct(serv.coreStg, mType, mReceiver)
+		err := funcslib.UpdateStorageInterfaceByMetricStruct(serv.coreStg, mType, mReceiver)
 		if err != nil {
 			logger.Log.ErrorHTTP(res, err, http.StatusInternalServerError)
 		}
@@ -207,7 +207,7 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 	if isUpdate {
 		switch serv.cfg.SaveMode {
 		case constants.FileMode:
-			updatedJSON, err := functionslibrary.EncodeMetricJSON(mType, mReceiver.ID, newValue)
+			updatedJSON, err := funcslib.EncodeMetricJSON(mType, mReceiver.ID, newValue)
 			if err == nil {
 				serv.SaveCurrentMetrics(updatedJSON)
 			}
@@ -216,7 +216,7 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 		}
 	}
 
-	respJSON, encodeErr := functionslibrary.EncodeMetricJSON(functionslibrary.ConvertStringToMetricType(mReceiver.MType), mReceiver.ID, newValue)
+	respJSON, encodeErr := funcslib.EncodeMetricJSON(funcslib.ConvertStringToMetricType(mReceiver.MType), mReceiver.ID, newValue)
 	if encodeErr != nil {
 		logger.Log.ErrorHTTP(res, encodeErr, http.StatusInternalServerError)
 		return
@@ -310,7 +310,7 @@ func DecompressHandler(next http.Handler) http.Handler {
 			return
 		}
 
-		data, err := functionslibrary.DecompressData(r.Body)
+		data, err := funcslib.DecompressData(r.Body)
 
 		if err != nil {
 			logger.Log.Info("DecompressData failed!")

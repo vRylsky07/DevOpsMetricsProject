@@ -22,16 +22,13 @@ type MemStorage struct {
 
 func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[string]int) {
 	gaugeOut := make(map[string]float64)
+	counterOut := make(map[string]int)
 
 	mStg.mtx.Lock()
 	for k, v := range mStg.gauge {
 		gaugeOut[k] = v
 	}
-	mStg.mtx.Unlock()
 
-	counterOut := make(map[string]int)
-
-	mStg.mtx.Lock()
 	for k, v := range mStg.counter {
 		counterOut[k] = v
 	}

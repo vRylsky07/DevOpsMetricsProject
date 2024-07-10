@@ -3,7 +3,7 @@ package server
 import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
-	functionslibrary "DevOpsMetricsProject/internal/funcslib"
+	funcslib "DevOpsMetricsProject/internal/funcslib"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
 	"bufio"
@@ -230,14 +230,14 @@ func RestoreData(cfg *configs.ServerConfig, sStg storage.StorageInterface) *Metr
 	for scanner.Scan() {
 		line := io.NopCloser(strings.NewReader(string(scanner.Bytes())))
 
-		metricStruct, err := functionslibrary.DecodeMetricJSON(line)
+		metricStruct, err := funcslib.DecodeMetricJSON(line)
 
 		if err != nil {
 			logger.Log.Error(err.Error())
 			continue
 		}
 
-		errUpdate := functionslibrary.UpdateStorageInterfaceByMetricStruct(sStg, functionslibrary.ConvertStringToMetricType(metricStruct.MType), metricStruct)
+		errUpdate := funcslib.UpdateStorageInterfaceByMetricStruct(sStg, funcslib.ConvertStringToMetricType(metricStruct.MType), metricStruct)
 		if errUpdate != nil {
 			logger.Log.Error(errUpdate.Error())
 			continue
@@ -266,7 +266,7 @@ func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer) {
 	matched := false
 
 	readerBuf := io.NopCloser(strings.NewReader(b.String()))
-	mFromBuf, errBuf := functionslibrary.DecodeMetricJSON(readerBuf)
+	mFromBuf, errBuf := funcslib.DecodeMetricJSON(readerBuf)
 
 	if errBuf != nil {
 		logger.Log.Error(errBuf.Error())
@@ -276,7 +276,7 @@ func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer) {
 	for scanner.Scan() {
 
 		readerSave := io.NopCloser(strings.NewReader(string(scanner.Bytes())))
-		mFromSave, err := functionslibrary.DecodeMetricJSON(readerSave)
+		mFromSave, err := funcslib.DecodeMetricJSON(readerSave)
 
 		if err != nil {
 			logger.Log.Error(err.Error())
