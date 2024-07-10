@@ -168,12 +168,7 @@ func (serv *dompserver) IncorrectRequestHandler(res http.ResponseWriter, req *ht
 func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Request) {
 
 	if !serv.IsValid() {
-		http.Error(res, "Server not working fine please check its initialization!", http.StatusInternalServerError)
-		return
-	}
-
-	if serv == nil || serv.coreMux == nil || serv.coreStg == nil {
-		logger.Log.ErrorHTTP(res, errors.New("ERROR! Server not working fine please check its initialization"), http.StatusBadRequest)
+		logger.Log.ErrorHTTP(res, errors.New("server not working fine please check its initialization"), http.StatusInternalServerError)
 		return
 	}
 
@@ -182,9 +177,9 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 
 	isUpdate := (req.URL.Path == "/update" || req.URL.Path == "/update/")
 
-	reqCopy := io.NopCloser(strings.NewReader(body.String()))
+	readCloser := io.NopCloser(strings.NewReader(body.String()))
 
-	mReceiver, err := funcslib.DecodeMetricJSON(reqCopy)
+	mReceiver, err := funcslib.DecodeMetricJSON(readCloser)
 
 	if err != nil {
 		logger.Log.ErrorHTTP(res, err, http.StatusBadRequest)
@@ -196,7 +191,7 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 	mType := funcslib.ConvertStringToMetricType(mReceiver.MType)
 
 	if isUpdate {
-		err := funcslib.UpdateStorageInterfaceByMetricStruct(serv.coreStg, mType, mReceiver)
+		err := funcslib.UpdateStorageInterfaceByMetricStruct(serv.coreStg, mReceiver)
 		if err != nil {
 			logger.Log.ErrorHTTP(res, err, http.StatusInternalServerError)
 		}
@@ -228,7 +223,40 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 }
 
 func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Request) {
+	if !serv.IsValid() {
+		logger.Log.ErrorHTTP(res, errors.New("server not working fine please check its initialization"), http.StatusInternalServerError)
+		return
+	}
 
+	var body bytes.Buffer
+	body.ReadFrom(req.Body)
+
+	readCloser := io.NopCloser(strings.NewReader(body.String()))
+
+	mReceiver, err := funcslib.DecodeBatchJSON(readCloser)
+
+	if err != nil {
+		logger.Log.ErrorHTTP(res, err, http.StatusBadRequest)
+		return
+	}
+
+	for _, m := range *mReceiver {
+		err = funcslib.UpdateStorageInterfaceByMetricStruct(serv.coreStg, &m)
+		if err != nil {
+			logger.Log.ErrorHTTP(res, err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	err = UpdateBatchDB(serv.db, serv.coreStg)
+
+	if err != nil {
+		logger.Log.ErrorHTTP(res, err, http.StatusBadRequest)
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
+	res.Write([]byte("Metrics was been updated by batch! Thank you!"))
 }
 
 func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, req *http.Request) {
@@ -324,3 +352,15 @@ func DecompressHandler(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+/*
+	for _, v := range *mReceiver {
+		switch funcslib.ConvertStringToMetricType(v.MType) {
+		case constants.GaugeType:
+			logger.Log.Info("Batch element received", zap.String("Metric", v.ID), zap.Float64("Value", *v.Value))
+
+		case constants.CounterType:
+			logger.Log.Info("Batch element received", zap.String("Metric", v.ID), zap.Int64("Value", *v.Delta))
+		}
+	}
+*/

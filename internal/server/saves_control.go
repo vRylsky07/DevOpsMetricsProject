@@ -237,7 +237,7 @@ func RestoreData(cfg *configs.ServerConfig, sStg storage.StorageInterface) *Metr
 			continue
 		}
 
-		errUpdate := funcslib.UpdateStorageInterfaceByMetricStruct(sStg, funcslib.ConvertStringToMetricType(metricStruct.MType), metricStruct)
+		errUpdate := funcslib.UpdateStorageInterfaceByMetricStruct(sStg, metricStruct)
 		if errUpdate != nil {
 			logger.Log.Error(errUpdate.Error())
 			continue

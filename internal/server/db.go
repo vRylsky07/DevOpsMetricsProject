@@ -4,6 +4,7 @@ import (
 	"DevOpsMetricsProject/internal/constants"
 	funcslib "DevOpsMetricsProject/internal/funcslib"
 	"DevOpsMetricsProject/internal/logger"
+	"DevOpsMetricsProject/internal/storage"
 	"context"
 	"database/sql"
 	"fmt"
@@ -114,6 +115,48 @@ func UpdateMetricDB(db *sql.DB, mType constants.MetricType, mName string, mValue
 	}
 
 	logger.Log.Info("Database update metric successfull.", zap.String("MetricName", mName), zap.Float64("Value", mValue))
+
+	return tx.Commit()
+}
+
+func UpdateBatchDB(db *sql.DB, sStg storage.StorageInterface) error {
+	gauge, counter := sStg.ReadMemStorageFields()
+
+	tx, errBegin := db.Begin()
+
+	if errBegin != nil {
+		return errBegin
+	}
+
+	var err error
+
+	for k, v := range gauge {
+		q := `INSERT INTO gauge (name, value)	VALUES ($1, $2)	ON CONFLICT (name)` +
+			`DO UPDATE SET name=EXCLUDED.name, value=$3;`
+
+		_, err = tx.ExecContext(context.TODO(), q, k, v, v)
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+			tx.Rollback()
+			return err
+		}
+	}
+
+	for k, v := range counter {
+		q := `INSERT INTO counter (name, value)	VALUES ($1, $2)	ON CONFLICT (name)` +
+			`DO UPDATE SET name=EXCLUDED.name, value=$3;`
+
+		_, err = tx.ExecContext(context.TODO(), q, k, v, v)
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+			tx.Rollback()
+			return err
+		}
+	}
+
+	logger.Log.Info("Updating database by metrics  batches successfully.")
 
 	return tx.Commit()
 }

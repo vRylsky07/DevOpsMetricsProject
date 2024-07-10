@@ -258,7 +258,7 @@ func (sStg *dompsender) ManageRequests(catchErrs *[]error) {
 		}
 
 		for nameCounter, valueCounter := range counter {
-			mJSON, errJSON = funcslib.EncodeMetricJSON(constants.GaugeType, nameCounter, float64(valueCounter))
+			mJSON, errJSON = funcslib.EncodeMetricJSON(constants.CounterType, nameCounter, float64(valueCounter))
 			sStg.postRequestByMetricType(nameCounter, mJSON, errJSON, catchErrs)
 		}
 	}

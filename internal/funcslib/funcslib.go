@@ -94,7 +94,8 @@ func EncodeBatchJSON(mStg storage.StorageInterface) (*bytes.Buffer, error) {
 		if i == length {
 			break
 		}
-		mArray[i] = coretypes.Metrics{ID: k, MType: "gauge", Value: &v}
+		storeValue := v
+		mArray[i] = coretypes.Metrics{ID: k, MType: "gauge", Value: &storeValue}
 		i++
 	}
 
@@ -115,11 +116,13 @@ func EncodeBatchJSON(mStg storage.StorageInterface) (*bytes.Buffer, error) {
 		logger.Log.Error(err.Error())
 	}
 
-	str, _ := jsonOut.ReadString(';')
-
-	logger.Log.Info(str)
-
 	return &jsonOut, err
+}
+
+func DecodeBatchJSON(req io.ReadCloser) (*[]coretypes.Metrics, error) {
+	var mReceiver []coretypes.Metrics
+	err := json.NewDecoder(req).Decode(&mReceiver)
+	return &mReceiver, err
 }
 
 func CompressData(data []byte) (*bytes.Buffer, error) {
@@ -167,7 +170,9 @@ func DecompressData(body io.ReadCloser) (io.ReadCloser, error) {
 	return newReadCloser, nil
 }
 
-func UpdateStorageInterfaceByMetricStruct(sStg storage.StorageInterface, mType constants.MetricType, mReceiver *coretypes.Metrics) error {
+func UpdateStorageInterfaceByMetricStruct(sStg storage.StorageInterface, mReceiver *coretypes.Metrics) error {
+	mType := ConvertStringToMetricType(mReceiver.MType)
+
 	switch mType {
 	case constants.GaugeType:
 		if mReceiver.Value == nil {
