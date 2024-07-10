@@ -54,6 +54,7 @@ func ConvertMetricTypeToString(mType constants.MetricType) string {
 }
 
 func EncodeMetricJSON(mType constants.MetricType, mName string, mValue float64) (*bytes.Buffer, error) {
+
 	src := coretypes.Metrics{}
 
 	src.ID = mName
@@ -79,6 +80,46 @@ func DecodeMetricJSON(req io.ReadCloser) (*coretypes.Metrics, error) {
 	var mReceiver coretypes.Metrics
 	err := json.NewDecoder(req).Decode(&mReceiver)
 	return &mReceiver, err
+}
+
+func EncodeBatchJSON(mStg storage.StorageInterface) (*bytes.Buffer, error) {
+	gauge, counter := mStg.ReadMemStorageFields()
+	length := len(gauge) + len(counter)
+
+	mArray := make([]coretypes.Metrics, length)
+
+	i := 0
+
+	for k, v := range gauge {
+		if i == length {
+			break
+		}
+		mArray[i] = coretypes.Metrics{ID: k, MType: "gauge", Value: &v}
+		i++
+	}
+
+	for k, v := range counter {
+		if i == length {
+			break
+		}
+		delta := int64(v)
+		mArray[i] = coretypes.Metrics{ID: k, MType: "counter", Delta: &delta}
+		i++
+	}
+
+	var jsonOut bytes.Buffer
+	jsonEncoder := json.NewEncoder(&jsonOut)
+	err := jsonEncoder.Encode(mArray)
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+	}
+
+	str, _ := jsonOut.ReadString(';')
+
+	logger.Log.Info(str)
+
+	return &jsonOut, err
 }
 
 func CompressData(data []byte) (*bytes.Buffer, error) {

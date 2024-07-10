@@ -6,11 +6,14 @@ import (
 	"DevOpsMetricsProject/internal/functionslibrary"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
 	"runtime"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 //go:generate mockgen -source=sender.go -destination=mocks/sender_mocks.go
@@ -104,17 +107,31 @@ func (sStg *dompsender) SendMetricsHTTP() []error {
 			return catchErrs
 		}
 
-		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
+		var mJSON *bytes.Buffer
+		var errJSON error
 
-		for nameGauge, valueGauge := range gauge {
-			sStg.postRequestByMetricType(true, constants.GaugeType, nameGauge, valueGauge, &catchErrs)
-		}
+		switch sStg.cfg.UseBatches {
+		case true:
+			mJSON, errJSON = functionslibrary.EncodeBatchJSON(sStg.GetStorage())
+			sStg.postRequestByMetricType("batch", mJSON, errJSON, &catchErrs)
 
-		for nameCounter, valueCounter := range counter {
-			sStg.postRequestByMetricType(true, constants.CounterType, nameCounter, float64(valueCounter), &catchErrs)
-		}
-		if interval == -1 {
-			return catchErrs
+		case false:
+
+			gauge, counter := sStg.GetStorage().ReadMemStorageFields()
+
+			for nameGauge, valueGauge := range gauge {
+				mJSON, errJSON = functionslibrary.EncodeMetricJSON(constants.GaugeType, nameGauge, valueGauge)
+				sStg.postRequestByMetricType(nameGauge, mJSON, errJSON, &catchErrs)
+			}
+
+			for nameCounter, valueCounter := range counter {
+				mJSON, errJSON = functionslibrary.EncodeMetricJSON(constants.GaugeType, nameCounter, float64(valueCounter))
+				sStg.postRequestByMetricType(nameCounter, mJSON, errJSON, &catchErrs)
+			}
+
+			if interval == -1 {
+				return catchErrs
+			}
 		}
 	}
 	return catchErrs
@@ -191,23 +208,27 @@ func (sStg *dompsender) updateGaugeMetrics() {
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "TotalAlloc", float64(mFromRuntime.TotalAlloc))
 }
 
-func (sStg *dompsender) postRequestByMetricType(compress bool, mType constants.MetricType, mName string, mValue float64, catchErrs *[]error) {
+func (sStg *dompsender) postRequestByMetricType(mName string, mJSON *bytes.Buffer, encErr error, catchErrs *[]error) {
 
 	if !sStg.IsValid() {
 		return
 	}
 
-	sendURL := "http://" + sStg.cfg.Address + "/update/"
-
-	mJSON, jsonErr := functionslibrary.EncodeMetricJSON(mType, mName, mValue)
-
-	if jsonErr != nil {
-		*catchErrs = append(*catchErrs, jsonErr)
-		logger.Log.Error(jsonErr.Error())
+	if encErr != nil {
+		logger.Log.Error(encErr.Error())
+		*catchErrs = append(*catchErrs, encErr)
 		return
 	}
 
-	if compress {
+	batchStr := ""
+
+	if sStg.cfg.UseBatches {
+		batchStr = "s"
+	}
+
+	sendURL := "http://" + sStg.cfg.Address + "/update" + batchStr + "/"
+
+	if sStg.cfg.CompressData {
 		zipped, compErr := functionslibrary.CompressData(mJSON.Bytes())
 		if compErr == nil {
 			mJSON = zipped
@@ -225,7 +246,7 @@ func (sStg *dompsender) postRequestByMetricType(compress bool, mType constants.M
 
 	req.Header.Add("Content-Type", "application/json")
 
-	if compress {
+	if sStg.cfg.CompressData {
 		req.Header.Add("Content-Encoding", "gzip ")
 	}
 
@@ -240,9 +261,9 @@ func (sStg *dompsender) postRequestByMetricType(compress bool, mType constants.M
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Log.Info(fmt.Sprintf(`Metric %s update failed! Status code: %d`, mName, resp.StatusCode))
+		logger.Log.Info(fmt.Sprintf(`Metrics update failed! Status code: %d`, resp.StatusCode))
 		return
 	}
 
-	logger.Log.Info(fmt.Sprintf(`Metric %s update was successful! Status code: %d`, mName, resp.StatusCode))
+	logger.Log.Info(fmt.Sprintf(`Metric%s update was successful! Status code: %d`, batchStr, resp.StatusCode), zap.String("MetricName", mName))
 }

@@ -227,6 +227,10 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 	res.Write(respJSON.Bytes())
 }
 
+func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Request) {
+
+}
+
 func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, req *http.Request) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)

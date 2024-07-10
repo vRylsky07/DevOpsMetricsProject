@@ -16,6 +16,8 @@ type ClientConfig struct {
 	PollInterval   int    `env:"POLL_INTERVAL"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 	Loglevel       string `env:"LOG_LEVEL"`
+	CompressData   bool   `env:"COMPRESS_DATA"`
+	UseBatches     bool   `env:"USE_BATCHES"`
 }
 
 func (cfg *ClientConfig) SetClientConfigFlags() {
@@ -24,12 +26,16 @@ func (cfg *ClientConfig) SetClientConfigFlags() {
 	pollInterval := flag.Int("p", 2, "input metrics update interval in seconds")
 	reportInterval := flag.Int("r", 10, "input interval to send metrics in seconds")
 	lvl := flag.String("l", "info", "log level")
+	compress := flag.Bool("compress", true, "should we use data compress")
+	batches := flag.Bool("batches", true, "should we send data with batches")
 	flag.Parse()
 
 	cfg.Address = *address
 	cfg.PollInterval = *pollInterval
 	cfg.ReportInterval = *reportInterval
 	cfg.Loglevel = *lvl
+	cfg.CompressData = *compress
+	cfg.UseBatches = *batches
 
 	err := env.Parse(cfg)
 	if err != nil {

@@ -79,6 +79,9 @@ func CreateNewServer(cfg *configs.ServerConfig) *dompserver {
 		r.Post("/", dompserv.MetricHandlerJSON)
 		r.Get("/{mType}/{mName}", dompserv.GetMetricHandler)
 	})
+	dompserv.coreMux.Route("/updates", func(r chi.Router) {
+		r.Post("/", dompserv.UpdateBatchHandler)
+	})
 	return dompserv
 }
 
