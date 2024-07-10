@@ -3,7 +3,7 @@ package server
 import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
-	"DevOpsMetricsProject/internal/functionslibrary"
+	functionslibrary "DevOpsMetricsProject/internal/funcslib"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
 	"bufio"

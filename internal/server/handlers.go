@@ -2,7 +2,7 @@ package server
 
 import (
 	"DevOpsMetricsProject/internal/constants"
-	"DevOpsMetricsProject/internal/functionslibrary"
+	functionslibrary "DevOpsMetricsProject/internal/funcslib"
 	"DevOpsMetricsProject/internal/logger"
 	"bytes"
 	"compress/gzip"

@@ -3,7 +3,7 @@ package sender
 import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
-	"DevOpsMetricsProject/internal/functionslibrary"
+	"DevOpsMetricsProject/internal/funcslib"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
 	"bytes"
@@ -112,7 +112,7 @@ func (sStg *dompsender) SendMetricsHTTP() []error {
 
 		switch sStg.cfg.UseBatches {
 		case true:
-			mJSON, errJSON = functionslibrary.EncodeBatchJSON(sStg.GetStorage())
+			mJSON, errJSON = funcslib.EncodeBatchJSON(sStg.GetStorage())
 			sStg.postRequestByMetricType("batch", mJSON, errJSON, &catchErrs)
 
 		case false:
@@ -120,12 +120,12 @@ func (sStg *dompsender) SendMetricsHTTP() []error {
 			gauge, counter := sStg.GetStorage().ReadMemStorageFields()
 
 			for nameGauge, valueGauge := range gauge {
-				mJSON, errJSON = functionslibrary.EncodeMetricJSON(constants.GaugeType, nameGauge, valueGauge)
+				mJSON, errJSON = funcslib.EncodeMetricJSON(constants.GaugeType, nameGauge, valueGauge)
 				sStg.postRequestByMetricType(nameGauge, mJSON, errJSON, &catchErrs)
 			}
 
 			for nameCounter, valueCounter := range counter {
-				mJSON, errJSON = functionslibrary.EncodeMetricJSON(constants.GaugeType, nameCounter, float64(valueCounter))
+				mJSON, errJSON = funcslib.EncodeMetricJSON(constants.GaugeType, nameCounter, float64(valueCounter))
 				sStg.postRequestByMetricType(nameCounter, mJSON, errJSON, &catchErrs)
 			}
 
@@ -178,7 +178,7 @@ func (sStg *dompsender) updateGaugeMetrics() {
 	mFromRuntime := &runtime.MemStats{}
 	runtime.ReadMemStats(mFromRuntime)
 
-	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "RandomValue", functionslibrary.GenerateRandomValue(-10000, 10000, 3))
+	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "RandomValue", funcslib.GenerateRandomValue(-10000, 10000, 3))
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "Alloc", float64(mFromRuntime.Alloc))
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "BuckHashSys", float64(mFromRuntime.BuckHashSys))
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "Frees", float64(mFromRuntime.Frees))
@@ -229,7 +229,7 @@ func (sStg *dompsender) postRequestByMetricType(mName string, mJSON *bytes.Buffe
 	sendURL := "http://" + sStg.cfg.Address + "/update" + batchStr + "/"
 
 	if sStg.cfg.CompressData {
-		zipped, compErr := functionslibrary.CompressData(mJSON.Bytes())
+		zipped, compErr := funcslib.CompressData(mJSON.Bytes())
 		if compErr == nil {
 			mJSON = zipped
 		}

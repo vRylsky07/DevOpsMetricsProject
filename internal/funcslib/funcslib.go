@@ -1,4 +1,4 @@
-package functionslibrary
+package funcslib
 
 import (
 	"DevOpsMetricsProject/internal/constants"
