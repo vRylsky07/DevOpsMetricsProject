@@ -76,7 +76,7 @@ func PrepareTablesDB(db *sql.DB) error {
 	if !CheckTableExist(db, "counter") {
 		_, errCreate := tx.ExecContext(context.TODO(), `CREATE TABLE counter(
 			"name" varchar PRIMARY KEY,
-			"value" int
+			"value" bigint
 			);`)
 
 		if errCreate != nil {
