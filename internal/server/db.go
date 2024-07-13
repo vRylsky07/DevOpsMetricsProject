@@ -8,11 +8,35 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 
 	"go.uber.org/zap"
 )
 
-func RunDB(dsn string) (*sql.DB, error) {
+type DompInterfaceDB interface {
+	UpdateMetricDB(db *sql.DB, mType constants.MetricType, mName string, mValue float64) error
+	UpdateBatchDB(db *sql.DB, sStg storage.StorageInterface) error
+	GetDB() *sql.DB
+	IsValid() bool
+}
+
+type dompdb struct {
+	db  *sql.DB
+	mtx sync.Mutex
+}
+
+func (d *dompdb) GetDB() *sql.DB {
+	return d.db
+}
+
+func (d *dompdb) IsValid() bool {
+	if d == nil || d.db == nil {
+		return false
+	}
+	return true
+}
+
+func RunDB(dsn string) (*dompdb, error) {
 	logger.Log.Info("Database DSN: " + dsn)
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -29,8 +53,10 @@ func RunDB(dsn string) (*sql.DB, error) {
 		return nil, errPrep
 	}
 
+	dompdb := &dompdb{db: db}
+
 	logger.Log.Info("Connection to Database is OK")
-	return db, nil
+	return dompdb, nil
 }
 
 func CheckTableExist(db *sql.DB, tableName string) bool {
@@ -91,9 +117,11 @@ func PrepareTablesDB(db *sql.DB) error {
 	return tx.Commit()
 }
 
-func UpdateMetricDB(db *sql.DB, mType constants.MetricType, mName string, mValue float64) error {
+func (d *dompdb) UpdateMetricDB(mType constants.MetricType, mName string, mValue float64) error {
 
-	tx, errBegin := db.Begin()
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	tx, errBegin := d.db.Begin()
 
 	if errBegin != nil {
 		return errBegin
@@ -119,10 +147,13 @@ func UpdateMetricDB(db *sql.DB, mType constants.MetricType, mName string, mValue
 	return tx.Commit()
 }
 
-func UpdateBatchDB(db *sql.DB, sStg storage.StorageInterface) error {
+func (d *dompdb) UpdateBatchDB(sStg storage.StorageInterface) error {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+
 	gauge, counter := sStg.ReadMemStorageFields()
 
-	tx, errBegin := db.Begin()
+	tx, errBegin := d.db.Begin()
 
 	if errBegin != nil {
 		return errBegin

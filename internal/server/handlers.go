@@ -140,7 +140,7 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 
 		switch serv.cfg.SaveMode {
 		case constants.DatabaseMode:
-			UpdateMetricDB(serv.db, mTypeConst, mName, valueInFloat)
+			serv.dompdb.UpdateMetricDB(mTypeConst, mName, valueInFloat)
 		case constants.FileMode:
 			mJSON, errEnc := funcslib.EncodeMetricJSON(mTypeConst, mName, valueInFloat)
 			if errEnc == nil {
@@ -207,7 +207,7 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 				serv.SaveCurrentMetrics(updatedJSON)
 			}
 		case constants.DatabaseMode:
-			UpdateMetricDB(serv.db, mType, mReceiver.ID, newValue)
+			serv.dompdb.UpdateMetricDB(mType, mReceiver.ID, newValue)
 		}
 	}
 
@@ -248,7 +248,7 @@ func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Re
 		}
 	}
 
-	err = UpdateBatchDB(serv.db, serv.coreStg)
+	err = serv.dompdb.UpdateBatchDB(serv.coreStg)
 
 	if err != nil {
 		logger.Log.ErrorHTTP(res, err, http.StatusBadRequest)
@@ -263,7 +263,7 @@ func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, req *http.R
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	if err := serv.db.PingContext(ctx); err != nil {
+	if err := serv.dompdb.db.PingContext(ctx); err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -352,15 +352,3 @@ func DecompressHandler(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
-/*
-	for _, v := range *mReceiver {
-		switch funcslib.ConvertStringToMetricType(v.MType) {
-		case constants.GaugeType:
-			logger.Log.Info("Batch element received", zap.String("Metric", v.ID), zap.Float64("Value", *v.Value))
-
-		case constants.CounterType:
-			logger.Log.Info("Batch element received", zap.String("Metric", v.ID), zap.Int64("Value", *v.Delta))
-		}
-	}
-*/

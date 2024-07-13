@@ -5,7 +5,6 @@ import (
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
-	"database/sql"
 	"net/http"
 	"os"
 
@@ -20,7 +19,7 @@ type dompserver struct {
 	currentMetrics *os.File
 	cfg            *configs.ServerConfig
 	savefile       *MetricsSave
-	db             *sql.DB
+	dompdb         *dompdb
 }
 
 func (serv *dompserver) IsValid() bool {
@@ -34,8 +33,13 @@ func (serv *dompserver) IsValid() bool {
 func Start() {
 	dompserv := CreateNewServer(configs.CreateServerConfig())
 
-	if dompserv.cfg.SaveMode == constants.FileMode {
+	switch dompserv.cfg.SaveMode {
+	case constants.FileMode:
 		dompserv.StartSaveMetricsThread()
+	case constants.DatabaseMode:
+		if !dompserv.dompdb.IsValid() {
+			return
+		}
 	}
 
 	if !dompserv.IsValid() {
@@ -92,7 +96,7 @@ func NewDompServer(cfg *configs.ServerConfig) *dompserver {
 	logger.Initialize(cfg.Loglevel, "server_")
 
 	var currentMetrics *os.File = nil
-	var db *sql.DB
+	var db *dompdb
 
 	switch cfg.SaveMode {
 	case constants.DatabaseMode:
@@ -113,7 +117,7 @@ func NewDompServer(cfg *configs.ServerConfig) *dompserver {
 		currentMetrics: currentMetrics,
 		cfg:            cfg,
 		savefile:       RestoreData(cfg, coreStg),
-		db:             db,
+		dompdb:         db,
 	}
 	return serv
 }

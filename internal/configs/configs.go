@@ -99,5 +99,3 @@ func CreateServerConfig() *ServerConfig {
 
 	return cfg
 }
-
-//host=localhost user=postgres password=123 dbname=testdb sslmode=disable
