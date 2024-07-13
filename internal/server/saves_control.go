@@ -199,14 +199,35 @@ func CreateMetricsSave(interval int) *MetricsSave {
 	return &MetricsSave{interval, file}
 }
 
-func RestoreData(cfg *configs.ServerConfig, sStg storage.StorageInterface) *MetricsSave {
+func RestoreDataFromDB(dompdb *dompdb, sStg storage.StorageInterface) {
+	g, c := dompdb.GetAllData()
 
-	if cfg.SaveMode != constants.FileMode {
+	if g == nil || c == nil || (len(g) == 0) || (len(c) == 0) {
+		logger.Log.Info("Database is empty")
+		return
+	}
+
+	for k, v := range g {
+		sStg.UpdateMetricByName(constants.RenewOperation, constants.GaugeType, k, v)
+	}
+
+	for k, v := range c {
+		sStg.UpdateMetricByName(constants.AddOperation, constants.CounterType, k, float64(v))
+	}
+
+	logger.Log.Info("Restore data from database successfully")
+}
+
+func RestoreData(cfg *configs.ServerConfig, dompdb *dompdb, sStg storage.StorageInterface) *MetricsSave {
+
+	if cfg.SaveMode == constants.DatabaseMode {
+		if cfg.RestoreBool {
+			RestoreDataFromDB(dompdb, sStg)
+		}
 		return nil
 	}
 
 	if !cfg.RestoreBool || sStg == nil {
-		logger.Log.Info("Restore data skipped")
 		return CreateMetricsSave(cfg.StoreInterval)
 	}
 

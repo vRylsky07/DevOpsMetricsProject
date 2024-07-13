@@ -116,8 +116,9 @@ func NewDompServer(cfg *configs.ServerConfig) *dompserver {
 		coreStg:        coreStg,
 		currentMetrics: currentMetrics,
 		cfg:            cfg,
-		savefile:       RestoreData(cfg, coreStg),
+		savefile:       RestoreData(cfg, db, coreStg),
 		dompdb:         db,
 	}
+
 	return serv
 }

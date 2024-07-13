@@ -25,6 +25,7 @@ func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[stri
 	counterOut := make(map[string]int)
 
 	mStg.mtx.Lock()
+	defer mStg.mtx.Unlock()
 	for k, v := range mStg.gauge {
 		gaugeOut[k] = v
 	}
@@ -32,7 +33,6 @@ func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[stri
 	for k, v := range mStg.counter {
 		counterOut[k] = v
 	}
-	mStg.mtx.Unlock()
 
 	return gaugeOut, counterOut
 }

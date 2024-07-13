@@ -16,8 +16,8 @@ import (
 type DompInterfaceDB interface {
 	UpdateMetricDB(db *sql.DB, mType constants.MetricType, mName string, mValue float64) error
 	UpdateBatchDB(db *sql.DB, sStg storage.StorageInterface) error
-	GetDB() *sql.DB
 	IsValid() bool
+	GetAllData() (g map[string]float64, c map[string]int)
 }
 
 type dompdb struct {
@@ -25,8 +25,65 @@ type dompdb struct {
 	mtx sync.Mutex
 }
 
-func (d *dompdb) GetDB() *sql.DB {
-	return d.db
+func (d *dompdb) GetAllData() (g map[string]float64, c map[string]int) {
+	gaugeOut := make(map[string]float64)
+	counterOut := make(map[string]int)
+
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+
+	rowsG, errG := d.db.QueryContext(context.TODO(), "SELECT * FROM gauge")
+	rowsC, errC := d.db.QueryContext(context.TODO(), "SELECT * FROM counter")
+
+	if errG != nil || errC != nil {
+		return nil, nil
+	}
+
+	defer rowsG.Close()
+
+	for rowsG.Next() {
+		var name string
+		var value float64
+
+		err := rowsG.Scan(&name, &value)
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+			return nil, nil
+		}
+
+		gaugeOut[name] = value
+	}
+
+	err := rowsG.Err()
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return nil, nil
+	}
+
+	defer rowsC.Close()
+
+	for rowsC.Next() {
+		var name string
+		var value int
+
+		err := rowsC.Scan(&name, &value)
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+			return nil, nil
+		}
+
+		counterOut[name] = value
+	}
+
+	err = rowsC.Err()
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return nil, nil
+	}
+
+	return gaugeOut, counterOut
 }
 
 func (d *dompdb) IsValid() bool {
