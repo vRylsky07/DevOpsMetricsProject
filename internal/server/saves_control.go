@@ -23,7 +23,7 @@ func (serv *dompserver) StartSaveMetricsThread() {
 	}
 
 	if serv.savefile.StoreInterval == 0 {
-		logger.Log.Info("StoreInterval is 0 and metrics will save after update immediately")
+		serv.log.Info("StoreInterval is 0 and metrics will save after update immediately")
 		return
 	}
 
@@ -49,7 +49,7 @@ func (serv *dompserver) TransferMetricsToFile() error {
 	file, err := os.Open(serv.currentMetrics.Name())
 
 	if err != nil {
-		logger.Log.Error(err.Error())
+		serv.log.Error(err.Error())
 		return err
 	}
 
@@ -58,37 +58,37 @@ func (serv *dompserver) TransferMetricsToFile() error {
 	buf, errRead := io.ReadAll(file)
 
 	if errRead != nil {
-		logger.Log.Error(errRead.Error())
+		serv.log.Error(errRead.Error())
 		return errRead
 	}
 
 	savefile, errSf := os.OpenFile(serv.savefile.Savefile.Name(), os.O_RDWR, 0666)
 
 	if errSf != nil {
-		logger.Log.Error(errSf.Error())
+		serv.log.Error(errSf.Error())
 		return errSf
 	}
 
 	errTrun := savefile.Truncate(0)
 	if errTrun != nil {
-		logger.Log.Error(errTrun.Error())
+		serv.log.Error(errTrun.Error())
 		return errTrun
 	}
 
 	_, errSeek := savefile.Seek(0, 0)
 
 	if errSeek != nil {
-		logger.Log.Error(errSeek.Error())
+		serv.log.Error(errSeek.Error())
 		return errSeek
 	}
 
 	_, errWrite := savefile.Write(buf)
 	if errWrite != nil {
-		logger.Log.Error(errWrite.Error())
+		serv.log.Error(errWrite.Error())
 		return errWrite
 	}
 
-	logger.Log.Info("Metrics was successfully transfered to save file")
+	serv.log.Info("Metrics was successfully transfered to save file")
 
 	return nil
 }
@@ -99,9 +99,9 @@ func (serv *dompserver) SaveCurrentMetrics(b *bytes.Buffer) {
 	}
 	switch serv.savefile.StoreInterval {
 	case 0:
-		ReplaceOrAddRowToFile(serv.savefile.Savefile, b)
+		ReplaceOrAddRowToFile(serv.savefile.Savefile, b, serv.log)
 	default:
-		ReplaceOrAddRowToFile(serv.currentMetrics, b)
+		ReplaceOrAddRowToFile(serv.currentMetrics, b, serv.log)
 	}
 }
 
@@ -113,7 +113,7 @@ func GetMetricsSaveFileDir() string {
 	return filepath.Join(".", "saved")
 }
 
-func CreateTempFile(filename string, restore bool) *os.File {
+func CreateTempFile(filename string, restore bool, log logger.LoggerInterface) *os.File {
 
 	noSepStr := strings.Split(filename, "/")
 
@@ -134,20 +134,20 @@ func CreateTempFile(filename string, restore bool) *os.File {
 	if !skipMkDir {
 		err := os.RemoveAll(dir)
 		if err != nil {
-			logger.Log.Error(err.Error())
+			log.Error(err.Error())
 			return nil
 		}
 
 		err = os.MkdirAll(dir, os.ModePerm)
 		if err != nil {
-			logger.Log.Error(err.Error())
+			log.Error(err.Error())
 			return nil
 		}
 	}
 
 	tFile, errCreate := os.CreateTemp(dir, "*_"+name)
 	if errCreate != nil {
-		logger.Log.Error(errCreate.Error())
+		log.Error(errCreate.Error())
 		return nil
 	}
 
@@ -155,14 +155,14 @@ func CreateTempFile(filename string, restore bool) *os.File {
 		errMkDir := os.MkdirAll(GetMetricsSaveFileDir(), os.ModePerm)
 
 		if errMkDir != nil {
-			logger.Log.Error(errMkDir.Error())
+			log.Error(errMkDir.Error())
 			return nil
 		}
 
 		file, err := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR|os.O_CREATE, 0666)
 
 		if err != nil {
-			logger.Log.Error(err.Error())
+			log.Error(err.Error())
 			return nil
 		}
 
@@ -174,28 +174,27 @@ func CreateTempFile(filename string, restore bool) *os.File {
 		}
 	}
 
-	logger.Log.Info(fmt.Sprintf("\nTemporal file with current metrics was created. Path: %s", tFile.Name()))
+	log.Info(fmt.Sprintf("\nTemporal file with current metrics was created. Path: %s", tFile.Name()))
 
 	return tFile
 }
 
-func CreateMetricsSave(interval int) *MetricsSave {
-
+func CreateMetricsSave(interval int, log logger.LoggerInterface) *MetricsSave {
 	dir := filepath.Join(".", "saved")
 
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
-		logger.Log.Error(err.Error())
+		log.Error(err.Error())
 		return nil
 	}
 
 	file, errCreate := os.Create(GetMetricsSaveFilePath())
 	if errCreate != nil {
-		logger.Log.Error(errCreate.Error())
+		log.Error(errCreate.Error())
 		return nil
 	}
 
-	logger.Log.Info("New savefile was created")
+	log.Info("New savefile was created")
 	return &MetricsSave{interval, file}
 }
 
@@ -203,7 +202,7 @@ func RestoreDataFromDB(dompdb *dompdb, sStg storage.StorageInterface) {
 	g, c := dompdb.GetAllData()
 
 	if g == nil || c == nil || (len(g) == 0) || (len(c) == 0) {
-		logger.Log.Info("Database is empty")
+		dompdb.log.Info("Database is empty")
 		return
 	}
 
@@ -215,32 +214,32 @@ func RestoreDataFromDB(dompdb *dompdb, sStg storage.StorageInterface) {
 		sStg.UpdateMetricByName(constants.AddOperation, constants.CounterType, k, float64(v))
 	}
 
-	logger.Log.Info("Restore data from database successfully")
+	dompdb.log.Info("Restore data from database successfully")
 }
 
-func RestoreData(cfg *configs.ServerConfig, dompdb *dompdb, sStg storage.StorageInterface) *MetricsSave {
+func RestoreData(cfg *configs.ServerConfig, db *dompdb, sStg storage.StorageInterface, log logger.LoggerInterface) *MetricsSave {
 
 	if cfg.SaveMode == constants.DatabaseMode {
 		if cfg.RestoreBool {
-			RestoreDataFromDB(dompdb, sStg)
+			RestoreDataFromDB(db, sStg)
 		}
 		return nil
 	}
 
 	if !cfg.RestoreBool || sStg == nil {
-		return CreateMetricsSave(cfg.StoreInterval)
+		return CreateMetricsSave(cfg.StoreInterval, log)
 	}
 
 	errMkDir := os.MkdirAll(GetMetricsSaveFileDir(), os.ModePerm)
 	if errMkDir != nil {
-		logger.Log.Error(errMkDir.Error())
+		log.Error(errMkDir.Error())
 		return nil
 	}
 
 	file, err := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR|os.O_CREATE, 0666)
 
 	if err != nil {
-		logger.Log.Error(err.Error())
+		log.Error(err.Error())
 		return nil
 	}
 
@@ -254,26 +253,26 @@ func RestoreData(cfg *configs.ServerConfig, dompdb *dompdb, sStg storage.Storage
 		metricStruct, err := funcslib.DecodeMetricJSON(line)
 
 		if err != nil {
-			logger.Log.Error(err.Error())
+			log.Error(err.Error())
 			continue
 		}
 
 		errUpdate := funcslib.UpdateStorageInterfaceByMetricStruct(sStg, metricStruct)
 		if errUpdate != nil {
-			logger.Log.Error(errUpdate.Error())
+			log.Error(errUpdate.Error())
 			continue
 		}
 	}
 
-	logger.Log.Info("Storage was successfully restored from save file")
+	log.Info("Storage was successfully restored from save file")
 	return &MetricsSave{cfg.StoreInterval, file}
 }
 
-func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer) {
+func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer, log logger.LoggerInterface) {
 	openF, err := os.OpenFile(file.Name(), os.O_RDWR, 0666)
 
 	if err != nil {
-		logger.Log.Error(err.Error())
+		log.Error(err.Error())
 		return
 	}
 
@@ -290,7 +289,7 @@ func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer) {
 	mFromBuf, errBuf := funcslib.DecodeMetricJSON(readerBuf)
 
 	if errBuf != nil {
-		logger.Log.Error(errBuf.Error())
+		log.Error(errBuf.Error())
 		return
 	}
 
@@ -300,7 +299,7 @@ func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer) {
 		mFromSave, err := funcslib.DecodeMetricJSON(readerSave)
 
 		if err != nil {
-			logger.Log.Error(err.Error())
+			log.Error(err.Error())
 			return
 		}
 
@@ -319,14 +318,14 @@ func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer) {
 
 	errTrun := file.Truncate(0)
 	if errTrun != nil {
-		logger.Log.Error(errTrun.Error())
+		log.Error(errTrun.Error())
 		return
 	}
 
 	_, errSeek := file.Seek(0, 0)
 
 	if errSeek != nil {
-		logger.Log.Error(errSeek.Error())
+		log.Error(errSeek.Error())
 		return
 	}
 

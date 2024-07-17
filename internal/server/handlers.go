@@ -3,7 +3,6 @@ package server
 import (
 	"DevOpsMetricsProject/internal/constants"
 	funcslib "DevOpsMetricsProject/internal/funcslib"
-	"DevOpsMetricsProject/internal/logger"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -86,7 +85,7 @@ func (serv *dompserver) GetMetricHandler(res http.ResponseWriter, req *http.Requ
 	mName := chi.URLParam(req, "mName")
 
 	if mType != "gauge" && mType != "counter" {
-		logger.Log.ErrorHTTP(res, errors.New("your request is incorrect! Metric type should be `gauge` or `counter`"), http.StatusBadRequest)
+		serv.log.ErrorHTTP(res, errors.New("your request is incorrect! Metric type should be `gauge` or `counter`"), http.StatusBadRequest)
 		return
 	}
 
@@ -140,7 +139,7 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 
 		switch serv.cfg.SaveMode {
 		case constants.DatabaseMode:
-			serv.dompdb.UpdateMetricDB(mTypeConst, mName, valueInFloat)
+			serv.db.UpdateMetricDB(mTypeConst, mName, valueInFloat)
 		case constants.FileMode:
 			mJSON, errEnc := funcslib.EncodeMetricJSON(mTypeConst, mName, valueInFloat)
 			if errEnc == nil {
@@ -168,7 +167,7 @@ func (serv *dompserver) IncorrectRequestHandler(res http.ResponseWriter, req *ht
 func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Request) {
 
 	if !serv.IsValid() {
-		logger.Log.ErrorHTTP(res, errors.New("server not working fine please check its initialization"), http.StatusInternalServerError)
+		serv.log.ErrorHTTP(res, errors.New("server not working fine please check its initialization"), http.StatusInternalServerError)
 		return
 	}
 
@@ -182,7 +181,7 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 	mReceiver, err := funcslib.DecodeMetricJSON(readCloser)
 
 	if err != nil {
-		logger.Log.ErrorHTTP(res, err, http.StatusBadRequest)
+		serv.log.ErrorHTTP(res, err, http.StatusBadRequest)
 		return
 	}
 
@@ -193,7 +192,7 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 	if isUpdate {
 		err := funcslib.UpdateStorageInterfaceByMetricStruct(serv.coreStg, mReceiver)
 		if err != nil {
-			logger.Log.ErrorHTTP(res, err, http.StatusInternalServerError)
+			serv.log.ErrorHTTP(res, err, http.StatusInternalServerError)
 		}
 	}
 
@@ -207,13 +206,13 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 				serv.SaveCurrentMetrics(updatedJSON)
 			}
 		case constants.DatabaseMode:
-			serv.dompdb.UpdateMetricDB(mType, mReceiver.ID, newValue)
+			serv.db.UpdateMetricDB(mType, mReceiver.ID, newValue)
 		}
 	}
 
 	respJSON, encodeErr := funcslib.EncodeMetricJSON(funcslib.ConvertStringToMetricType(mReceiver.MType), mReceiver.ID, newValue)
 	if encodeErr != nil {
-		logger.Log.ErrorHTTP(res, encodeErr, http.StatusInternalServerError)
+		serv.log.ErrorHTTP(res, encodeErr, http.StatusInternalServerError)
 		return
 	}
 
@@ -224,7 +223,7 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 
 func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Request) {
 	if !serv.IsValid() {
-		logger.Log.ErrorHTTP(res, errors.New("server not working fine please check its initialization"), http.StatusInternalServerError)
+		serv.log.ErrorHTTP(res, errors.New("server not working fine please check its initialization"), http.StatusInternalServerError)
 		return
 	}
 
@@ -236,22 +235,22 @@ func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Re
 	mReceiver, err := funcslib.DecodeBatchJSON(readCloser)
 
 	if err != nil {
-		logger.Log.ErrorHTTP(res, err, http.StatusBadRequest)
+		serv.log.ErrorHTTP(res, err, http.StatusBadRequest)
 		return
 	}
 
 	for _, m := range *mReceiver {
 		err = funcslib.UpdateStorageInterfaceByMetricStruct(serv.coreStg, &m)
 		if err != nil {
-			logger.Log.ErrorHTTP(res, err, http.StatusInternalServerError)
+			serv.log.ErrorHTTP(res, err, http.StatusInternalServerError)
 			return
 		}
 	}
 
-	err = serv.dompdb.UpdateBatchDB(serv.coreStg)
+	err = serv.db.UpdateBatchDB(serv.coreStg)
 
 	if err != nil {
-		logger.Log.ErrorHTTP(res, err, http.StatusBadRequest)
+		serv.log.ErrorHTTP(res, err, http.StatusBadRequest)
 		return
 	}
 
@@ -263,7 +262,7 @@ func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, req *http.R
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	if err := serv.dompdb.db.PingContext(ctx); err != nil {
+	if err := serv.db.db.PingContext(ctx); err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -287,7 +286,7 @@ func (serv *dompserver) WithRequestLog(h http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		logger.Log.Info("Server got HTTP-request", zap.String("uri", uri), zap.String("method", method), zap.Duration("time", duration))
+		serv.log.Info("Server got HTTP-request", zap.String("uri", uri), zap.String("method", method), zap.Duration("time", duration))
 
 	}
 	return http.HandlerFunc(logFn)
@@ -303,13 +302,13 @@ func (serv *dompserver) WithResponseLog(h http.Handler) http.Handler {
 		rlw := &ResponceLogWriter{w, 0, 0}
 		h.ServeHTTP(rlw, r)
 
-		logger.Log.Info("Server responding", zap.Int("status", rlw.statusCode), zap.Int("size", rlw.size))
+		serv.log.Info("Server responding", zap.Int("status", rlw.statusCode), zap.Int("size", rlw.size))
 	}
 
 	return http.HandlerFunc(logFn)
 }
 
-func gzipHandle(next http.Handler) http.Handler {
+func (serv *dompserver) gzipHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
@@ -319,7 +318,7 @@ func gzipHandle(next http.Handler) http.Handler {
 
 		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
-			logger.Log.ErrorHTTP(w, err, http.StatusNotFound)
+			serv.log.ErrorHTTP(w, err, http.StatusNotFound)
 			return
 		}
 
@@ -329,11 +328,11 @@ func gzipHandle(next http.Handler) http.Handler {
 	})
 }
 
-func DecompressHandler(next http.Handler) http.Handler {
+func (serv *dompserver) DecompressHandler(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
-			logger.Log.Info("No decompression")
+			serv.log.Info("No decompression")
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -341,14 +340,14 @@ func DecompressHandler(next http.Handler) http.Handler {
 		data, err := funcslib.DecompressData(r.Body)
 
 		if err != nil {
-			logger.Log.Info("DecompressData failed!")
+			serv.log.Info("DecompressData failed!")
 			next.ServeHTTP(w, r)
 			return
 		}
 
 		r.Body = data
 
-		logger.Log.Info("Using GZIP decompression")
+		serv.log.Info("Using GZIP decompression")
 		next.ServeHTTP(w, r)
 	})
 }

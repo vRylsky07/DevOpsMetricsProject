@@ -22,6 +22,7 @@ type DompInterfaceDB interface {
 
 type dompdb struct {
 	db  *sql.DB
+	log logger.LoggerInterface
 	mtx sync.Mutex
 }
 
@@ -48,7 +49,7 @@ func (d *dompdb) GetAllData() (g map[string]float64, c map[string]int) {
 		err := rowsG.Scan(&name, &value)
 
 		if err != nil {
-			logger.Log.Error(err.Error())
+			d.log.Error(err.Error())
 			return nil, nil
 		}
 
@@ -57,7 +58,7 @@ func (d *dompdb) GetAllData() (g map[string]float64, c map[string]int) {
 
 	err := rowsG.Err()
 	if err != nil {
-		logger.Log.Error(err.Error())
+		d.log.Error(err.Error())
 		return nil, nil
 	}
 
@@ -70,7 +71,7 @@ func (d *dompdb) GetAllData() (g map[string]float64, c map[string]int) {
 		err := rowsC.Scan(&name, &value)
 
 		if err != nil {
-			logger.Log.Error(err.Error())
+			d.log.Error(err.Error())
 			return nil, nil
 		}
 
@@ -79,7 +80,7 @@ func (d *dompdb) GetAllData() (g map[string]float64, c map[string]int) {
 
 	err = rowsC.Err()
 	if err != nil {
-		logger.Log.Error(err.Error())
+		d.log.Error(err.Error())
 		return nil, nil
 	}
 
@@ -87,14 +88,11 @@ func (d *dompdb) GetAllData() (g map[string]float64, c map[string]int) {
 }
 
 func (d *dompdb) IsValid() bool {
-	if d == nil || d.db == nil {
-		return false
-	}
-	return true
+	return d.db != nil
 }
 
-func RunDB(dsn string) (*dompdb, error) {
-	logger.Log.Info("Database DSN: " + dsn)
+func RunDB(dsn string, log logger.LoggerInterface) (*dompdb, error) {
+	log.Info("Database DSN: " + dsn)
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
@@ -104,19 +102,19 @@ func RunDB(dsn string) (*dompdb, error) {
 		return nil, errPing
 	}
 
-	errPrep := PrepareTablesDB(db)
+	errPrep := PrepareTablesDB(db, log)
 
 	if errPrep != nil {
 		return nil, errPrep
 	}
 
-	dompdb := &dompdb{db: db}
+	dompdb := &dompdb{db: db, log: log}
 
-	logger.Log.Info("Connection to Database is OK")
+	log.Info("Connection to Database is OK")
 	return dompdb, nil
 }
 
-func CheckTableExist(db *sql.DB, tableName string) bool {
+func CheckTableExist(db *sql.DB, log logger.LoggerInterface, tableName string) bool {
 
 	row := db.QueryRowContext(context.TODO(),
 		"SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = $1);", tableName)
@@ -126,14 +124,14 @@ func CheckTableExist(db *sql.DB, tableName string) bool {
 	err := row.Scan(&isExisted)
 
 	if err != nil {
-		logger.Log.Error(err.Error())
+		log.Error(err.Error())
 		return false
 	}
 
 	return isExisted
 }
 
-func PrepareTablesDB(db *sql.DB) error {
+func PrepareTablesDB(db *sql.DB, log logger.LoggerInterface) error {
 
 	tx, err := db.Begin()
 
@@ -141,34 +139,34 @@ func PrepareTablesDB(db *sql.DB) error {
 		return err
 	}
 
-	if !CheckTableExist(db, "gauge") {
+	if !CheckTableExist(db, log, "gauge") {
 		_, errCreate := tx.ExecContext(context.TODO(), `CREATE TABLE gauge(
 			"name" varchar PRIMARY KEY,
 			"value" double precision
 			);`)
 
 		if errCreate != nil {
-			logger.Log.Error(errCreate.Error())
+			log.Error(errCreate.Error())
 			tx.Rollback()
 			return errCreate
 		}
 
-		logger.Log.Info("Database table named 'gauge' was been successfully created")
+		log.Info("Database table named 'gauge' was been successfully created")
 	}
 
-	if !CheckTableExist(db, "counter") {
+	if !CheckTableExist(db, log, "counter") {
 		_, errCreate := tx.ExecContext(context.TODO(), `CREATE TABLE counter(
 			"name" varchar PRIMARY KEY,
 			"value" bigint
 			);`)
 
 		if errCreate != nil {
-			logger.Log.Error(errCreate.Error())
+			log.Error(errCreate.Error())
 			tx.Rollback()
 			return errCreate
 		}
 
-		logger.Log.Info("Database table named 'counter' was been successfully created")
+		log.Info("Database table named 'counter' was been successfully created")
 	}
 
 	return tx.Commit()
@@ -194,12 +192,12 @@ func (d *dompdb) UpdateMetricDB(mType constants.MetricType, mName string, mValue
 	_, err := tx.ExecContext(context.TODO(), q, mName, mValue, mValue)
 
 	if err != nil {
-		logger.Log.Error(err.Error())
+		d.log.Error(err.Error())
 		tx.Rollback()
 		return err
 	}
 
-	logger.Log.Info("Database update metric successfull.", zap.String("MetricName", mName), zap.Float64("Value", mValue))
+	d.log.Info("Database update metric successfull.", zap.String("MetricName", mName), zap.Float64("Value", mValue))
 
 	return tx.Commit()
 }
@@ -225,7 +223,7 @@ func (d *dompdb) UpdateBatchDB(sStg storage.StorageInterface) error {
 		_, err = tx.ExecContext(context.TODO(), q, k, v, v)
 
 		if err != nil {
-			logger.Log.Error(err.Error())
+			d.log.Error(err.Error())
 			tx.Rollback()
 			return err
 		}
@@ -238,13 +236,13 @@ func (d *dompdb) UpdateBatchDB(sStg storage.StorageInterface) error {
 		_, err = tx.ExecContext(context.TODO(), q, k, v, v)
 
 		if err != nil {
-			logger.Log.Error(err.Error())
+			d.log.Error(err.Error())
 			tx.Rollback()
 			return err
 		}
 	}
 
-	logger.Log.Info("Updating database by metrics  batches successfully.")
+	d.log.Info("Updating database by metrics  batches successfully.")
 
 	return tx.Commit()
 }

@@ -5,12 +5,12 @@ import (
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
+	"errors"
 	"net/http"
 	"os"
 
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"go.uber.org/zap"
 )
 
 type dompserver struct {
@@ -19,43 +19,34 @@ type dompserver struct {
 	currentMetrics *os.File
 	cfg            *configs.ServerConfig
 	savefile       *MetricsSave
-	dompdb         *dompdb
+	db             *dompdb
+	log            logger.LoggerInterface
 }
 
 func (serv *dompserver) IsValid() bool {
-	if serv.coreMux != nil || serv.coreStg != nil || serv.currentMetrics != nil || serv.cfg != nil || serv.savefile != nil || serv.savefile.IsValid() {
+	if serv.coreMux != nil || serv.coreStg != nil || serv.currentMetrics != nil || serv.cfg != nil || serv.savefile != nil || serv.savefile.IsValid() || serv.log != nil {
+		if (serv.cfg.SaveMode == constants.DatabaseMode) && (serv.db == nil || !serv.db.IsValid()) {
+			return false
+		}
 		return true
 	}
-	logger.Log.Error("DOMP Server is not valid")
 	return false
 }
 
 func Start() {
-	dompserv := CreateNewServer(configs.CreateServerConfig())
+	dompserv, err := CreateNewServer(configs.CreateServerConfig())
 
-	switch dompserv.cfg.SaveMode {
-	case constants.FileMode:
+	if err != nil {
+		panic(err)
+	}
+
+	if dompserv.cfg.SaveMode == constants.FileMode {
 		dompserv.StartSaveMetricsThread()
-	case constants.DatabaseMode:
-		if !dompserv.dompdb.IsValid() {
-			return
-		}
 	}
 
-	if !dompserv.IsValid() {
-		logger.Log.Info(
-			"Server initialization failed!  ",
-			zap.Bool("coreMux is nil?", (dompserv.coreMux == nil)),
-			zap.Bool("coreStg is nil?", (dompserv.coreStg == nil)),
-			zap.Bool("currentMetrics is nil?", (dompserv.currentMetrics == nil)),
-			zap.Bool("cfg is nil?", (dompserv.cfg == nil)),
-			zap.Bool("savefile is not valid?", (!dompserv.savefile.IsValid())),
-		)
-		return
-	}
-	logger.Log.Info("Server was successfully initialized!")
+	dompserv.log.Info("Server was successfully initialized!")
 
-	err := http.ListenAndServe(dompserv.cfg.Address, dompserv.coreMux)
+	err = http.ListenAndServe(dompserv.cfg.Address, dompserv.coreMux)
 
 	if err != nil {
 		panic(err)
@@ -63,13 +54,17 @@ func Start() {
 
 }
 
-func CreateNewServer(cfg *configs.ServerConfig) *dompserver {
-	dompserv := NewDompServer(cfg)
+func CreateNewServer(cfg *configs.ServerConfig) (*dompserver, error) {
+	dompserv, err := NewDompServer(cfg)
+
+	if !dompserv.IsValid() {
+		return nil, err
+	}
 
 	dompserv.coreMux.Use(dompserv.WithResponseLog)
 	dompserv.coreMux.Use(dompserv.WithRequestLog)
-	dompserv.coreMux.Use(gzipHandle)
-	dompserv.coreMux.Use(DecompressHandler)
+	dompserv.coreMux.Use(dompserv.gzipHandle)
+	dompserv.coreMux.Use(dompserv.DecompressHandler)
 
 	dompserv.coreMux.Get("/", dompserv.GetMainPageHandler)
 	dompserv.coreMux.Get("/ping", dompserv.PingDatabaseHandler)
@@ -86,14 +81,21 @@ func CreateNewServer(cfg *configs.ServerConfig) *dompserver {
 	dompserv.coreMux.Route("/updates", func(r chi.Router) {
 		r.Post("/", dompserv.UpdateBatchHandler)
 	})
-	return dompserv
+	return dompserv, nil
 }
 
-func NewDompServer(cfg *configs.ServerConfig) *dompserver {
+func NewDompServer(cfg *configs.ServerConfig) (*dompserver, error) {
 	coreMux := chi.NewRouter()
 	coreStg := &storage.MemStorage{}
 	coreStg.InitMemStorage()
-	logger.Initialize(cfg.Loglevel, "server_")
+
+	var errs []error
+
+	logger, errLog := logger.Initialize(cfg.Loglevel, "server_")
+
+	if errLog != nil {
+		errs = append(errs, errLog)
+	}
 
 	var currentMetrics *os.File = nil
 	var db *dompdb
@@ -101,14 +103,18 @@ func NewDompServer(cfg *configs.ServerConfig) *dompserver {
 	switch cfg.SaveMode {
 	case constants.DatabaseMode:
 		var err error
-		db, err = RunDB(cfg.DatabaseDSN)
+		db, err = RunDB(cfg.DatabaseDSN, logger)
 
 		if err != nil {
-			return nil
+			errs = append(errs, errLog)
 		}
 
 	case constants.FileMode:
-		currentMetrics = CreateTempFile(cfg.TempFile, cfg.RestoreBool)
+		currentMetrics = CreateTempFile(cfg.TempFile, cfg.RestoreBool, logger)
+	}
+
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 
 	serv := &dompserver{
@@ -116,9 +122,10 @@ func NewDompServer(cfg *configs.ServerConfig) *dompserver {
 		coreStg:        coreStg,
 		currentMetrics: currentMetrics,
 		cfg:            cfg,
-		savefile:       RestoreData(cfg, db, coreStg),
-		dompdb:         db,
+		savefile:       RestoreData(cfg, db, coreStg, logger),
+		db:             db,
+		log:            logger,
 	}
 
-	return serv
+	return serv, errors.Join(errs...)
 }

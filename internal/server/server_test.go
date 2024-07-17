@@ -71,7 +71,13 @@ func Test_updateMetricHandler(t *testing.T) {
 			wantedStatus: http.StatusNotFound,
 		},
 	}
-	StatusCheckTest(t, tests, CreateNewServer(&configs.ServerConfig{SaveMode: constants.FileMode}))
+	cfg := &configs.ServerConfig{SaveMode: constants.FileMode}
+
+	serv, err := CreateNewServer(cfg)
+
+	assert.Nil(t, err)
+
+	StatusCheckTest(t, tests, serv)
 }
 
 func Test_getMainPageHandler(t *testing.T) {
@@ -84,8 +90,9 @@ func Test_getMainPageHandler(t *testing.T) {
 			wantedStatus: http.StatusOK,
 		},
 	}
-
-	StatusCheckTest(t, tests, CreateNewServer(&configs.ServerConfig{SaveMode: constants.FileMode}))
+	serv, err := CreateNewServer(&configs.ServerConfig{SaveMode: constants.FileMode})
+	assert.Nil(t, err)
+	StatusCheckTest(t, tests, serv)
 }
 
 func Test_dompserver_GetMetricHandler(t *testing.T) {
@@ -103,14 +110,14 @@ func Test_dompserver_GetMetricHandler(t *testing.T) {
 			wantedStatus: http.StatusOK,
 		},
 	}
-
-	testServ := CreateNewServer(&configs.ServerConfig{SaveMode: constants.FileMode})
+	serv, err := CreateNewServer(&configs.ServerConfig{SaveMode: constants.FileMode})
+	assert.Nil(t, err)
 
 	g := map[string]float64{"testGauge": 55.5}
 	c := map[string]int{"testCounter": 55}
 
 	testingStorage := &storage_custom_mocks.StorageMockCustom{Gauge: g, Counter: c}
-	testServ.coreStg = testingStorage
+	serv.coreStg = testingStorage
 
-	StatusCheckTest(t, tests, testServ)
+	StatusCheckTest(t, tests, serv)
 }

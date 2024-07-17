@@ -27,13 +27,18 @@ type dompsender struct {
 	senderMemStorage storage.StorageInterface
 	stopThread       bool
 	cfg              *configs.ClientConfig
+	log              logger.LoggerInterface
+}
+
+func (sStg *dompsender) GetLogger() logger.LoggerInterface {
+	return sStg.log
 }
 
 func (sStg *dompsender) IsValid() bool {
 	if sStg != nil && sStg.senderMemStorage != nil && sStg.cfg != nil {
 		return true
 	}
-	logger.Log.Error("Sender Storage is not valid")
+	sStg.log.Error("Sender Storage is not valid")
 	return false
 }
 
@@ -42,11 +47,6 @@ func (sStg *dompsender) GetStorage() storage.StorageInterface {
 		return nil
 	}
 	return sStg.senderMemStorage
-}
-
-func (sStg *dompsender) InitSenderStorage(cfg *configs.ClientConfig, newStg storage.StorageInterface) {
-	sStg.senderMemStorage = newStg
-	sStg.cfg = cfg
 }
 
 func (sStg *dompsender) UpdateMetrics() {
@@ -116,14 +116,18 @@ func (sStg *dompsender) StopAgentProcessing() {
 	sStg.stopThread = true
 }
 
-func CreateSender(cfg *configs.ClientConfig) *dompsender {
+func CreateSender(cfg *configs.ClientConfig) (*dompsender, error) {
 	senderStorage := storage.MemStorage{}
 	senderStorage.InitMemStorage()
 
-	mSender := &dompsender{}
-	mSender.InitSenderStorage(cfg, &senderStorage)
+	log, err := logger.Initialize(cfg.Loglevel, "agent_")
 
-	return mSender
+	if err != nil {
+		return nil, err
+	}
+
+	mSender := &dompsender{senderMemStorage: &senderStorage, cfg: cfg, log: log}
+	return mSender, nil
 }
 
 func (sStg *dompsender) updateCounterMetrics() {
@@ -187,7 +191,7 @@ func (sStg *dompsender) postRequestByMetricType(mName string, mJSON *bytes.Buffe
 	}
 
 	if encErr != nil {
-		logger.Log.Error(encErr.Error())
+		sStg.log.Error(encErr.Error())
 		*catchErrs = append(*catchErrs, encErr)
 		return
 	}
@@ -204,6 +208,8 @@ func (sStg *dompsender) postRequestByMetricType(mName string, mJSON *bytes.Buffe
 		zipped, compErr := funcslib.CompressData(mJSON.Bytes())
 		if compErr == nil {
 			mJSON = zipped
+		} else {
+			sStg.log.Error(compErr.Error())
 		}
 	}
 
@@ -212,7 +218,7 @@ func (sStg *dompsender) postRequestByMetricType(mName string, mJSON *bytes.Buffe
 	req, errReq := http.NewRequest("POST", sendURL, mJSON)
 
 	if errReq != nil {
-		logger.Log.Error(errReq.Error())
+		sStg.log.Error(errReq.Error())
 		return
 	}
 
@@ -227,17 +233,17 @@ func (sStg *dompsender) postRequestByMetricType(mName string, mJSON *bytes.Buffe
 	if errDo != nil {
 		errStr := "Server is not responding. URL to send was: " + sendURL
 		*catchErrs = append(*catchErrs, errors.New(errStr))
-		logger.Log.Error(errStr)
+		sStg.log.Error(errStr)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Log.Info(fmt.Sprintf(`Metrics update failed! Status code: %d`, resp.StatusCode))
+		sStg.log.Info(fmt.Sprintf(`Metrics update failed! Status code: %d`, resp.StatusCode))
 		return
 	}
 
-	logger.Log.Info(fmt.Sprintf(`Metric%s update was successful! Status code: %d`, batchStr, resp.StatusCode), zap.String("MetricName", mName))
+	sStg.log.Info(fmt.Sprintf(`Metric%s update was successful! Status code: %d`, batchStr, resp.StatusCode), zap.String("MetricName", mName))
 }
 
 func (sStg *dompsender) ManageRequests(catchErrs *[]error) {
