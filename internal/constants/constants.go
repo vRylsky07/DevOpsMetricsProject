@@ -22,3 +22,7 @@ const (
 	FileMode
 	InMemoryMode
 )
+
+func GetRetryIntervals() *[]int {
+	return &[]int{0, 1, 3, 5}
+}

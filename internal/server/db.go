@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sync"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -33,8 +34,35 @@ func (d *dompdb) GetAllData() (g map[string]float64, c map[string]int) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
-	rowsG, errG := d.db.QueryContext(context.TODO(), "SELECT * FROM gauge")
-	rowsC, errC := d.db.QueryContext(context.TODO(), "SELECT * FROM counter")
+	var rowsG *sql.Rows
+	var errG error
+
+	for _, v := range *constants.GetRetryIntervals() {
+		if v != 0 {
+			d.log.Info("Database is dont resonding (Get gauge data). Retry get data again")
+			timer := time.NewTimer(time.Duration(v) * time.Second)
+			<-timer.C
+		}
+		rowsG, errG = d.db.QueryContext(context.TODO(), "SELECT * FROM gauge")
+		if errG == nil {
+			break
+		}
+	}
+
+	var rowsC *sql.Rows
+	var errC error
+
+	for _, v := range *constants.GetRetryIntervals() {
+		if v != 0 {
+			d.log.Info("Database is dont resonding (Get counter data). Retry get data again")
+			timer := time.NewTimer(time.Duration(v) * time.Second)
+			<-timer.C
+		}
+		rowsC, errC = d.db.QueryContext(context.TODO(), "SELECT * FROM counter")
+		if errC == nil {
+			break
+		}
+	}
 
 	if errG != nil || errC != nil {
 		return nil, nil
@@ -192,7 +220,7 @@ func (d *dompdb) UpdateMetricDB(mType constants.MetricType, mName string, mValue
 	_, err := tx.ExecContext(context.TODO(), q, mName, mValue, mValue)
 
 	if err != nil {
-		d.log.Error(err.Error())
+		//d.log.Error(err.Error())
 		tx.Rollback()
 		return err
 	}

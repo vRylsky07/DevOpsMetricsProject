@@ -100,7 +100,7 @@ func (sStg *dompsender) SendMetricsHTTP() []error {
 			<-ticker.C
 		}
 
-		sStg.ManageRequests(&catchErrs)
+		sStg.ManageRequests(&catchErrs, ticker)
 
 		if sStg.cfg.ReportInterval == -1 {
 			return catchErrs
@@ -184,7 +184,9 @@ func (sStg *dompsender) updateGaugeMetrics() {
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "TotalAlloc", float64(mFromRuntime.TotalAlloc))
 }
 
-func (sStg *dompsender) postRequestByMetricType(mName string, mJSON *bytes.Buffer, encErr error, catchErrs *[]error) {
+func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName string, mJSON *bytes.Buffer, encErr error, catchErrs *[]error) {
+	ticker.Stop()
+	defer ticker.Reset(time.Duration(sStg.cfg.ReportInterval) * time.Second)
 
 	if !sStg.IsValid() {
 		return
@@ -228,7 +230,21 @@ func (sStg *dompsender) postRequestByMetricType(mName string, mJSON *bytes.Buffe
 		req.Header.Add("Content-Encoding", "gzip ")
 	}
 
-	resp, errDo := client.Do(req)
+	var resp *http.Response
+	var errDo error
+
+	for _, v := range *constants.GetRetryIntervals() {
+		if v != 0 {
+			sStg.log.Info("Server is not responding. Retry to do post request")
+			timer := time.NewTimer(time.Duration(v) * time.Second)
+			<-timer.C
+		}
+		resp, errDo = client.Do(req)
+
+		if errDo == nil {
+			break
+		}
+	}
 
 	if errDo != nil {
 		errStr := "Server is not responding. URL to send was: " + sendURL
@@ -236,6 +252,7 @@ func (sStg *dompsender) postRequestByMetricType(mName string, mJSON *bytes.Buffe
 		sStg.log.Error(errStr)
 		return
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -246,26 +263,26 @@ func (sStg *dompsender) postRequestByMetricType(mName string, mJSON *bytes.Buffe
 	sStg.log.Info(fmt.Sprintf(`Metric%s update was successful! Status code: %d`, batchStr, resp.StatusCode), zap.String("MetricName", mName))
 }
 
-func (sStg *dompsender) ManageRequests(catchErrs *[]error) {
+func (sStg *dompsender) ManageRequests(catchErrs *[]error, ticker *time.Ticker) {
 	var mJSON *bytes.Buffer
 	var errJSON error
 
 	switch sStg.cfg.UseBatches {
 	case true:
 		mJSON, errJSON = funcslib.EncodeBatchJSON(sStg.GetStorage())
-		sStg.postRequestByMetricType("batch", mJSON, errJSON, catchErrs)
+		sStg.postRequestByMetricType(ticker, "batch", mJSON, errJSON, catchErrs)
 	case false:
 
 		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
 
 		for nameGauge, valueGauge := range gauge {
 			mJSON, errJSON = funcslib.EncodeMetricJSON(constants.GaugeType, nameGauge, valueGauge)
-			sStg.postRequestByMetricType(nameGauge, mJSON, errJSON, catchErrs)
+			sStg.postRequestByMetricType(ticker, nameGauge, mJSON, errJSON, catchErrs)
 		}
 
 		for nameCounter, valueCounter := range counter {
 			mJSON, errJSON = funcslib.EncodeMetricJSON(constants.CounterType, nameCounter, float64(valueCounter))
-			sStg.postRequestByMetricType(nameCounter, mJSON, errJSON, catchErrs)
+			sStg.postRequestByMetricType(ticker, nameCounter, mJSON, errJSON, catchErrs)
 		}
 	}
 }

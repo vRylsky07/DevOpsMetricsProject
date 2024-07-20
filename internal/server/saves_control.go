@@ -93,16 +93,20 @@ func (serv *dompserver) TransferMetricsToFile() error {
 	return nil
 }
 
-func (serv *dompserver) SaveCurrentMetrics(b *bytes.Buffer) {
+func (serv *dompserver) SaveCurrentMetrics(b *bytes.Buffer) error {
 	if !serv.IsValid() {
-		return
+		return errors.New("SaveCurrentMetrics() - server is not valid")
 	}
+
+	var err error
 	switch serv.savefile.StoreInterval {
 	case 0:
-		ReplaceOrAddRowToFile(serv.savefile.Savefile, b, serv.log)
+		err = ReplaceOrAddRowToFile(serv.savefile.Savefile, b, serv.log)
 	default:
-		ReplaceOrAddRowToFile(serv.currentMetrics, b, serv.log)
+		err = ReplaceOrAddRowToFile(serv.currentMetrics, b, serv.log)
 	}
+
+	return err
 }
 
 func GetMetricsSaveFilePath() string {
@@ -268,12 +272,12 @@ func RestoreData(cfg *configs.ServerConfig, db *dompdb, sStg storage.StorageInte
 	return &MetricsSave{cfg.StoreInterval, file}
 }
 
-func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer, log logger.LoggerInterface) {
+func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer, log logger.LoggerInterface) error {
 	openF, err := os.OpenFile(file.Name(), os.O_RDWR, 0666)
 
 	if err != nil {
 		log.Error(err.Error())
-		return
+		return err
 	}
 
 	defer openF.Close()
@@ -290,7 +294,7 @@ func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer, log logger.LoggerInte
 
 	if errBuf != nil {
 		log.Error(errBuf.Error())
-		return
+		return errBuf
 	}
 
 	for scanner.Scan() {
@@ -300,7 +304,7 @@ func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer, log logger.LoggerInte
 
 		if err != nil {
 			log.Error(err.Error())
-			return
+			return err
 		}
 
 		if mFromSave.ID == mFromBuf.ID {
@@ -319,15 +323,16 @@ func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer, log logger.LoggerInte
 	errTrun := file.Truncate(0)
 	if errTrun != nil {
 		log.Error(errTrun.Error())
-		return
+		return errTrun
 	}
 
 	_, errSeek := file.Seek(0, 0)
 
 	if errSeek != nil {
 		log.Error(errSeek.Error())
-		return
+		return errSeek
 	}
 
 	file.Write(containter.Bytes())
+	return nil
 }

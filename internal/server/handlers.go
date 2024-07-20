@@ -137,13 +137,34 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 			serv.coreStg.UpdateMetricByName(constants.AddOperation, mTypeConst, mName, valueInFloat)
 		}
 
-		switch serv.cfg.SaveMode {
-		case constants.DatabaseMode:
-			serv.db.UpdateMetricDB(mTypeConst, mName, valueInFloat)
-		case constants.FileMode:
-			mJSON, errEnc := funcslib.EncodeMetricJSON(mTypeConst, mName, valueInFloat)
-			if errEnc == nil {
-				serv.SaveCurrentMetrics(mJSON)
+	RetryLoopLabel:
+		for _, v := range *constants.GetRetryIntervals() {
+			if v != 0 {
+				serv.log.Info("Update database or current metrics file failed. Try again...")
+				timer := time.NewTimer(time.Duration(v) * time.Second)
+				<-timer.C
+			}
+			var err error
+			switch serv.cfg.SaveMode {
+			case constants.DatabaseMode:
+				err = serv.db.UpdateMetricDB(mTypeConst, mName, valueInFloat)
+				if err == nil {
+					break RetryLoopLabel
+				}
+			case constants.FileMode:
+				var mJSON *bytes.Buffer
+				var errJSON error
+				mJSON, errJSON = funcslib.EncodeMetricJSON(mTypeConst, mName, valueInFloat)
+
+				if errJSON != nil {
+					serv.log.Error(errJSON.Error())
+					break RetryLoopLabel
+				}
+
+				err = serv.SaveCurrentMetrics(mJSON)
+				if err == nil {
+					break RetryLoopLabel
+				}
 			}
 		}
 
