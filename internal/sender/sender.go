@@ -244,6 +244,7 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 		resp, errDo = client.Do(req)
 
 		if errDo == nil {
+			defer resp.Body.Close()
 			break
 		}
 	}
@@ -255,7 +256,7 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 		return
 	}
 
-	defer resp.Body.Close()
+	//defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		sStg.log.Info(fmt.Sprintf(`Metrics update failed! Status code: %d`, resp.StatusCode))
