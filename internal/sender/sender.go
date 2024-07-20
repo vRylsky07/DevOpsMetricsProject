@@ -235,7 +235,7 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 
 	for _, v := range *constants.GetRetryIntervals() {
 		if v != 0 {
-			sStg.log.Info("Server is not responding. Retry to do post request")
+			sStg.log.Info("Server is not responding. Retry to do post request...")
 			timer := time.NewTimer(time.Duration(v) * time.Second)
 			<-timer.C
 		}
