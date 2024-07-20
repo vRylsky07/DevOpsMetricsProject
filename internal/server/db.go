@@ -220,7 +220,7 @@ func (d *dompdb) UpdateMetricDB(mType constants.MetricType, mName string, mValue
 	_, err := tx.ExecContext(context.TODO(), q, mName, mValue, mValue)
 
 	if err != nil {
-		//d.log.Error(err.Error())
+		d.log.Error(err.Error())
 		tx.Rollback()
 		return err
 	}

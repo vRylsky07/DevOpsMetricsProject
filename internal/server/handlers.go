@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 )
@@ -163,6 +165,9 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 
 				err = serv.SaveCurrentMetrics(mJSON)
 				if err == nil {
+					if v != 0 {
+						serv.log.Info("Database or current metrics was successfully updated")
+					}
 					break RetryLoopLabel
 				}
 			}
@@ -220,14 +225,29 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 	newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
 
 	if isUpdate {
-		switch serv.cfg.SaveMode {
-		case constants.FileMode:
-			updatedJSON, err := funcslib.EncodeMetricJSON(mType, mReceiver.ID, newValue)
-			if err == nil {
-				serv.SaveCurrentMetrics(updatedJSON)
+	RetryLoopLabel:
+		for _, v := range *constants.GetRetryIntervals() {
+			if v != 0 {
+				serv.log.Info("Update database or current metrics file failed. Try again...")
+				timer := time.NewTimer(time.Duration(v) * time.Second)
+				<-timer.C
 			}
-		case constants.DatabaseMode:
-			serv.db.UpdateMetricDB(mType, mReceiver.ID, newValue)
+			var err error
+			switch serv.cfg.SaveMode {
+			case constants.FileMode:
+				updatedJSON, errJSON := funcslib.EncodeMetricJSON(mType, mReceiver.ID, newValue)
+				if errJSON == nil {
+					err = serv.SaveCurrentMetrics(updatedJSON)
+				}
+			case constants.DatabaseMode:
+				err = serv.db.UpdateMetricDB(mType, mReceiver.ID, newValue)
+			}
+			if err == nil {
+				if v != 0 {
+					serv.log.Info("Database or current metrics was successfully updated")
+				}
+				break RetryLoopLabel
+			}
 		}
 	}
 
@@ -268,7 +288,29 @@ func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Re
 		}
 	}
 
-	err = serv.db.UpdateBatchDB(serv.coreStg)
+	for _, v := range *constants.GetRetryIntervals() {
+		if v != 0 {
+			serv.log.Info("Update database with batches failed. Try again...")
+			timer := time.NewTimer(time.Duration(v) * time.Second)
+			<-timer.C
+		}
+
+		err := serv.db.UpdateBatchDB(serv.coreStg)
+
+		var pgErr *pgconn.PgError
+
+		isBreak := true
+
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				isBreak = false
+			}
+		}
+
+		if isBreak {
+			break
+		}
+	}
 
 	if err != nil {
 		serv.log.ErrorHTTP(res, err, http.StatusBadRequest)
