@@ -248,14 +248,14 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 		}
 	}
 
-	defer resp.Body.Close()
-
 	if errDo != nil {
 		errStr := "Server is not responding. URL to send was: " + sendURL
 		*catchErrs = append(*catchErrs, errors.New(errStr))
 		sStg.log.Error(errStr)
 		return
 	}
+
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		sStg.log.Info(fmt.Sprintf(`Metrics update failed! Status code: %d`, resp.StatusCode))
