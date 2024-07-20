@@ -185,8 +185,10 @@ func (sStg *dompsender) updateGaugeMetrics() {
 }
 
 func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName string, mJSON *bytes.Buffer, encErr error, catchErrs *[]error) {
-	ticker.Stop()
-	defer ticker.Reset(time.Duration(sStg.cfg.ReportInterval) * time.Second)
+	if ticker != nil {
+		ticker.Stop()
+		defer ticker.Reset(time.Duration(sStg.cfg.ReportInterval) * time.Second)
+	}
 
 	if !sStg.IsValid() {
 		return
