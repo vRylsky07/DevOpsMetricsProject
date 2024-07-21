@@ -299,17 +299,12 @@ func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Re
 
 		var pgErr *pgconn.PgError
 
-		isBreak := true
-
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				isBreak = false
+				continue
 			}
 		}
-
-		if isBreak {
-			break
-		}
+		break
 	}
 
 	if err != nil {
