@@ -50,10 +50,10 @@ func (mr *MockMetricsProviderMockRecorder) CreateMetricURL(mType, mainURL, name,
 }
 
 // GetStorage mocks base method.
-func (m *MockMetricsProvider) GetStorage() storage.StorageInterface {
+func (m *MockMetricsProvider) GetStorage() storage.MetricsRepository {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetStorage")
-	ret0, _ := ret[0].(storage.StorageInterface)
+	ret0, _ := ret[0].(storage.MetricsRepository)
 	return ret0
 }
 

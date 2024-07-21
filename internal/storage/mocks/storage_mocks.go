@@ -11,31 +11,31 @@ import (
 	gomock "github.com/golang/mock/gomock"
 )
 
-// MockStorageInterface is a mock of StorageInterface interface.
-type MockStorageInterface struct {
+// MockMetricsRepository is a mock of MetricsRepository interface.
+type MockMetricsRepository struct {
 	ctrl     *gomock.Controller
-	recorder *MockStorageInterfaceMockRecorder
+	recorder *MockMetricsRepositoryMockRecorder
 }
 
-// MockStorageInterfaceMockRecorder is the mock recorder for MockStorageInterface.
-type MockStorageInterfaceMockRecorder struct {
-	mock *MockStorageInterface
+// MockMetricsRepositoryMockRecorder is the mock recorder for MockMetricsRepository.
+type MockMetricsRepositoryMockRecorder struct {
+	mock *MockMetricsRepository
 }
 
-// NewMockStorageInterface creates a new mock instance.
-func NewMockStorageInterface(ctrl *gomock.Controller) *MockStorageInterface {
-	mock := &MockStorageInterface{ctrl: ctrl}
-	mock.recorder = &MockStorageInterfaceMockRecorder{mock}
+// NewMockMetricsRepository creates a new mock instance.
+func NewMockMetricsRepository(ctrl *gomock.Controller) *MockMetricsRepository {
+	mock := &MockMetricsRepository{ctrl: ctrl}
+	mock.recorder = &MockMetricsRepositoryMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockStorageInterface) EXPECT() *MockStorageInterfaceMockRecorder {
+func (m *MockMetricsRepository) EXPECT() *MockMetricsRepositoryMockRecorder {
 	return m.recorder
 }
 
 // GetMetricByName mocks base method.
-func (m *MockStorageInterface) GetMetricByName(mType constants.MetricType, mName string) (float64, error) {
+func (m *MockMetricsRepository) GetMetricByName(mType constants.MetricType, mName string) (float64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMetricByName", mType, mName)
 	ret0, _ := ret[0].(float64)
@@ -44,25 +44,25 @@ func (m *MockStorageInterface) GetMetricByName(mType constants.MetricType, mName
 }
 
 // GetMetricByName indicates an expected call of GetMetricByName.
-func (mr *MockStorageInterfaceMockRecorder) GetMetricByName(mType, mName interface{}) *gomock.Call {
+func (mr *MockMetricsRepositoryMockRecorder) GetMetricByName(mType, mName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricByName", reflect.TypeOf((*MockStorageInterface)(nil).GetMetricByName), mType, mName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricByName", reflect.TypeOf((*MockMetricsRepository)(nil).GetMetricByName), mType, mName)
 }
 
 // InitMemStorage mocks base method.
-func (m *MockStorageInterface) InitMemStorage() {
+func (m *MockMetricsRepository) InitMemStorage() {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "InitMemStorage")
 }
 
 // InitMemStorage indicates an expected call of InitMemStorage.
-func (mr *MockStorageInterfaceMockRecorder) InitMemStorage() *gomock.Call {
+func (mr *MockMetricsRepositoryMockRecorder) InitMemStorage() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitMemStorage", reflect.TypeOf((*MockStorageInterface)(nil).InitMemStorage))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitMemStorage", reflect.TypeOf((*MockMetricsRepository)(nil).InitMemStorage))
 }
 
 // ReadMemStorageFields mocks base method.
-func (m *MockStorageInterface) ReadMemStorageFields() (map[string]float64, map[string]int) {
+func (m *MockMetricsRepository) ReadMemStorageFields() (map[string]float64, map[string]int) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadMemStorageFields")
 	ret0, _ := ret[0].(map[string]float64)
@@ -71,19 +71,19 @@ func (m *MockStorageInterface) ReadMemStorageFields() (map[string]float64, map[s
 }
 
 // ReadMemStorageFields indicates an expected call of ReadMemStorageFields.
-func (mr *MockStorageInterfaceMockRecorder) ReadMemStorageFields() *gomock.Call {
+func (mr *MockMetricsRepositoryMockRecorder) ReadMemStorageFields() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadMemStorageFields", reflect.TypeOf((*MockStorageInterface)(nil).ReadMemStorageFields))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadMemStorageFields", reflect.TypeOf((*MockMetricsRepository)(nil).ReadMemStorageFields))
 }
 
 // UpdateMetricByName mocks base method.
-func (m *MockStorageInterface) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) {
+func (m *MockMetricsRepository) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "UpdateMetricByName", oper, mType, mName, mValue)
 }
 
 // UpdateMetricByName indicates an expected call of UpdateMetricByName.
-func (mr *MockStorageInterfaceMockRecorder) UpdateMetricByName(oper, mType, mName, mValue interface{}) *gomock.Call {
+func (mr *MockMetricsRepositoryMockRecorder) UpdateMetricByName(oper, mType, mName, mValue interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMetricByName", reflect.TypeOf((*MockStorageInterface)(nil).UpdateMetricByName), oper, mType, mName, mValue)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMetricByName", reflect.TypeOf((*MockMetricsRepository)(nil).UpdateMetricByName), oper, mType, mName, mValue)
 }

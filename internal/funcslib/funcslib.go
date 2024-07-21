@@ -81,7 +81,7 @@ func DecodeMetricJSON(req io.ReadCloser) (*coretypes.Metrics, error) {
 	return &mReceiver, err
 }
 
-func EncodeBatchJSON(mStg storage.StorageInterface) (*bytes.Buffer, error) {
+func EncodeBatchJSON(mStg storage.MetricsRepository) (*bytes.Buffer, error) {
 	gauge, counter := mStg.ReadMemStorageFields()
 	length := len(gauge) + len(counter)
 
@@ -167,7 +167,7 @@ func DecompressData(body io.ReadCloser) (io.ReadCloser, error) {
 	return newReadCloser, nil
 }
 
-func UpdateStorageInterfaceByMetricStruct(sStg storage.StorageInterface, mReceiver *coretypes.Metrics) error {
+func UpdateStorageInterfaceByMetricStruct(sStg storage.MetricsRepository, mReceiver *coretypes.Metrics) error {
 	mType := ConvertStringToMetricType(mReceiver.MType)
 
 	switch mType {

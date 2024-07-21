@@ -7,7 +7,7 @@ import (
 )
 
 //go:generate mockgen -source=storage.go -destination=mocks/storage_mocks.go
-type StorageInterface interface {
+type MetricsRepository interface {
 	InitMemStorage()
 	ReadMemStorageFields() (g map[string]float64, c map[string]int)
 	UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64)

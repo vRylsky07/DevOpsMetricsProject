@@ -16,7 +16,7 @@ import (
 
 type DompInterfaceDB interface {
 	UpdateMetricDB(mType constants.MetricType, mName string, mValue float64) error
-	UpdateBatchDB(sStg storage.StorageInterface) error
+	UpdateBatchDB(sStg storage.MetricsRepository) error
 	IsValid() bool
 	GetAllData() (g map[string]float64, c map[string]int)
 	GetDB() *sql.DB
@@ -235,7 +235,7 @@ func (d *dompdb) UpdateMetricDB(mType constants.MetricType, mName string, mValue
 	return tx.Commit()
 }
 
-func (d *dompdb) UpdateBatchDB(sStg storage.StorageInterface) error {
+func (d *dompdb) UpdateBatchDB(sStg storage.MetricsRepository) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 

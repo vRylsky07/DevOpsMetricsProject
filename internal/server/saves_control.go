@@ -202,7 +202,7 @@ func CreateMetricsSave(interval int, log logger.Recorder) *MetricsSave {
 	return &MetricsSave{interval, file}
 }
 
-func RestoreDataFromDB(db DompInterfaceDB, sStg storage.StorageInterface, log logger.Recorder) {
+func RestoreDataFromDB(db DompInterfaceDB, sStg storage.MetricsRepository, log logger.Recorder) {
 	g, c := db.GetAllData()
 
 	if g == nil || c == nil || (len(g) == 0) || (len(c) == 0) {
@@ -221,7 +221,7 @@ func RestoreDataFromDB(db DompInterfaceDB, sStg storage.StorageInterface, log lo
 	log.Info("Restore data from database successfully")
 }
 
-func RestoreData(cfg *configs.ServerConfig, db DompInterfaceDB, sStg storage.StorageInterface, log logger.Recorder) *MetricsSave {
+func RestoreData(cfg *configs.ServerConfig, db DompInterfaceDB, sStg storage.MetricsRepository, log logger.Recorder) *MetricsSave {
 
 	if cfg.SaveMode == constants.DatabaseMode {
 		if cfg.RestoreBool {

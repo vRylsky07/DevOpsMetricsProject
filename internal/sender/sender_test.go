@@ -16,7 +16,7 @@ import (
 func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	storageChecker := mock_storage.NewMockStorageInterface(mockCtrl)
+	storageChecker := mock_storage.NewMockMetricsRepository(mockCtrl)
 	sender, err := CreateSender(&configs.ClientConfig{})
 	assert.Nil(t, err)
 	sender.senderMemStorage = storageChecker
@@ -41,7 +41,7 @@ func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
 func TestSenderStorage_updateCounterMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	storageChecker := mock_storage.NewMockStorageInterface(mockCtrl)
+	storageChecker := mock_storage.NewMockMetricsRepository(mockCtrl)
 	sender, err := CreateSender(&configs.ClientConfig{})
 	assert.Nil(t, err)
 	sender.senderMemStorage = storageChecker
@@ -66,7 +66,7 @@ func TestSenderStorage_updateCounterMetrics(t *testing.T) {
 func TestSenderStorage_UpdateMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	storageChecker := mock_storage.NewMockStorageInterface(mockCtrl)
+	storageChecker := mock_storage.NewMockMetricsRepository(mockCtrl)
 	sender, err := CreateSender(&configs.ClientConfig{})
 	assert.Nil(t, err)
 	sender.senderMemStorage = storageChecker

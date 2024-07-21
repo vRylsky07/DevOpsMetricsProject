@@ -15,7 +15,7 @@ import (
 
 type dompserver struct {
 	coreMux        *chi.Mux
-	coreStg        storage.StorageInterface
+	coreStg        storage.MetricsRepository
 	currentMetrics *os.File
 	cfg            *configs.ServerConfig
 	savefile       *MetricsSave
