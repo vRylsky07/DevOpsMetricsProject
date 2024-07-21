@@ -15,16 +15,21 @@ import (
 )
 
 type DompInterfaceDB interface {
-	UpdateMetricDB(db *sql.DB, mType constants.MetricType, mName string, mValue float64) error
-	UpdateBatchDB(db *sql.DB, sStg storage.StorageInterface) error
+	UpdateMetricDB(mType constants.MetricType, mName string, mValue float64) error
+	UpdateBatchDB(sStg storage.StorageInterface) error
 	IsValid() bool
 	GetAllData() (g map[string]float64, c map[string]int)
+	GetDB() *sql.DB
 }
 
 type dompdb struct {
 	db  *sql.DB
-	log logger.LoggerInterface
+	log logger.Recorder
 	mtx sync.Mutex
+}
+
+func (d *dompdb) GetDB() *sql.DB {
+	return d.db
 }
 
 func (d *dompdb) GetAllData() (g map[string]float64, c map[string]int) {
@@ -119,7 +124,7 @@ func (d *dompdb) IsValid() bool {
 	return d.db != nil
 }
 
-func RunDB(dsn string, log logger.LoggerInterface) (*dompdb, error) {
+func RunDB(dsn string, log logger.Recorder) (*dompdb, error) {
 	log.Info("Database DSN: " + dsn)
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -142,7 +147,7 @@ func RunDB(dsn string, log logger.LoggerInterface) (*dompdb, error) {
 	return dompdb, nil
 }
 
-func CheckTableExist(db *sql.DB, log logger.LoggerInterface, tableName string) bool {
+func CheckTableExist(db *sql.DB, log logger.Recorder, tableName string) bool {
 
 	row := db.QueryRowContext(context.TODO(),
 		"SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = $1);", tableName)
@@ -159,7 +164,7 @@ func CheckTableExist(db *sql.DB, log logger.LoggerInterface, tableName string) b
 	return isExisted
 }
 
-func PrepareTablesDB(db *sql.DB, log logger.LoggerInterface) error {
+func PrepareTablesDB(db *sql.DB, log logger.Recorder) error {
 
 	tx, err := db.Begin()
 

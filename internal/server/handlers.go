@@ -320,7 +320,7 @@ func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, req *http.R
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	if err := serv.db.db.PingContext(ctx); err != nil {
+	if err := serv.db.GetDB().PingContext(ctx); err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}

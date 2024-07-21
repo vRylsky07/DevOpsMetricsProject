@@ -17,7 +17,7 @@ import (
 )
 
 //go:generate mockgen -source=sender.go -destination=mocks/sender_mocks.go
-type SenderInterface interface {
+type MetricsProvider interface {
 	SendMetricsHTTP(reportInterval int)
 	GetStorage() storage.StorageInterface
 	CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string
@@ -27,10 +27,10 @@ type dompsender struct {
 	senderMemStorage storage.StorageInterface
 	stopThread       bool
 	cfg              *configs.ClientConfig
-	log              logger.LoggerInterface
+	log              logger.Recorder
 }
 
-func (sStg *dompsender) GetLogger() logger.LoggerInterface {
+func (sStg *dompsender) GetLogger() logger.Recorder {
 	return sStg.log
 }
 

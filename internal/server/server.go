@@ -19,8 +19,8 @@ type dompserver struct {
 	currentMetrics *os.File
 	cfg            *configs.ServerConfig
 	savefile       *MetricsSave
-	db             *dompdb
-	log            logger.LoggerInterface
+	db             DompInterfaceDB
+	log            logger.Recorder
 }
 
 func (serv *dompserver) IsValid() bool {
@@ -97,8 +97,8 @@ func NewDompServer(cfg *configs.ServerConfig) (*dompserver, error) {
 		errs = append(errs, errLog)
 	}
 
-	var currentMetrics *os.File = nil
-	var db *dompdb
+	var currentMetrics *os.File
+	var db DompInterfaceDB
 
 	switch cfg.SaveMode {
 	case constants.DatabaseMode:

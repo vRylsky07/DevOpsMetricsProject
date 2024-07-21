@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type LoggerInterface interface {
+type Recorder interface {
 	Error(msg string, fields ...interface{})
 	ErrorHTTP(w http.ResponseWriter, err error, code int)
 	Info(msg string, fields ...interface{})
@@ -64,7 +64,7 @@ func (dl *dompLogZap) ErrorHTTP(w http.ResponseWriter, err error, code int) {
 	dl.Error(err.Error())
 }
 
-func Initialize(level string, filePrefix string) (LoggerInterface, error) {
+func Initialize(level string, filePrefix string) (Recorder, error) {
 
 	var initLog *dompLogZap
 

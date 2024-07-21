@@ -117,7 +117,7 @@ func GetMetricsSaveFileDir() string {
 	return filepath.Join(".", "saved")
 }
 
-func CreateTempFile(filename string, restore bool, log logger.LoggerInterface) *os.File {
+func CreateTempFile(filename string, restore bool, log logger.Recorder) *os.File {
 
 	noSepStr := strings.Split(filename, "/")
 
@@ -183,7 +183,7 @@ func CreateTempFile(filename string, restore bool, log logger.LoggerInterface) *
 	return tFile
 }
 
-func CreateMetricsSave(interval int, log logger.LoggerInterface) *MetricsSave {
+func CreateMetricsSave(interval int, log logger.Recorder) *MetricsSave {
 	dir := filepath.Join(".", "saved")
 
 	err := os.MkdirAll(dir, os.ModePerm)
@@ -202,11 +202,11 @@ func CreateMetricsSave(interval int, log logger.LoggerInterface) *MetricsSave {
 	return &MetricsSave{interval, file}
 }
 
-func RestoreDataFromDB(dompdb *dompdb, sStg storage.StorageInterface) {
-	g, c := dompdb.GetAllData()
+func RestoreDataFromDB(db DompInterfaceDB, sStg storage.StorageInterface, log logger.Recorder) {
+	g, c := db.GetAllData()
 
 	if g == nil || c == nil || (len(g) == 0) || (len(c) == 0) {
-		dompdb.log.Info("Database is empty")
+		log.Info("Database is empty")
 		return
 	}
 
@@ -218,14 +218,14 @@ func RestoreDataFromDB(dompdb *dompdb, sStg storage.StorageInterface) {
 		sStg.UpdateMetricByName(constants.AddOperation, constants.CounterType, k, float64(v))
 	}
 
-	dompdb.log.Info("Restore data from database successfully")
+	log.Info("Restore data from database successfully")
 }
 
-func RestoreData(cfg *configs.ServerConfig, db *dompdb, sStg storage.StorageInterface, log logger.LoggerInterface) *MetricsSave {
+func RestoreData(cfg *configs.ServerConfig, db DompInterfaceDB, sStg storage.StorageInterface, log logger.Recorder) *MetricsSave {
 
 	if cfg.SaveMode == constants.DatabaseMode {
 		if cfg.RestoreBool {
-			RestoreDataFromDB(db, sStg)
+			RestoreDataFromDB(db, sStg, log)
 		}
 		return nil
 	}
@@ -272,7 +272,7 @@ func RestoreData(cfg *configs.ServerConfig, db *dompdb, sStg storage.StorageInte
 	return &MetricsSave{cfg.StoreInterval, file}
 }
 
-func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer, log logger.LoggerInterface) error {
+func ReplaceOrAddRowToFile(file *os.File, b *bytes.Buffer, log logger.Recorder) error {
 	openF, err := os.OpenFile(file.Name(), os.O_RDWR, 0666)
 
 	if err != nil {
