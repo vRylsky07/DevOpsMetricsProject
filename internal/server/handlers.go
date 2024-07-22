@@ -316,7 +316,7 @@ func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Re
 	res.Write([]byte("Metrics was been updated by batch! Thank you!"))
 }
 
-func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, req *http.Request) {
+func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, _ *http.Request) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
