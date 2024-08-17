@@ -1,12 +1,12 @@
 package dompdb
 
 import (
+	backup "DevOpsMetricsProject/internal/backups"
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/funcslib"
 	"DevOpsMetricsProject/internal/logger"
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -14,17 +14,17 @@ import (
 	"go.uber.org/zap"
 )
 
-type dompdb struct {
+type DompDB struct {
 	db  *sql.DB
 	log logger.Recorder
 	mtx sync.Mutex
 }
 
-func (d *dompdb) CheckBackupStatus() error {
+func (d *DompDB) CheckBackupStatus() error {
 	return d.db.PingContext(context.TODO())
 }
 
-func (d *dompdb) GetAllData() (g map[string]float64, c map[string]int) {
+func (d *DompDB) GetAllData() (*map[string]float64, *map[string]int) {
 	gaugeOut := make(map[string]float64)
 	counterOut := make(map[string]int)
 
@@ -109,14 +109,14 @@ func (d *dompdb) GetAllData() (g map[string]float64, c map[string]int) {
 		return nil, nil
 	}
 
-	return gaugeOut, counterOut
+	return &gaugeOut, &counterOut
 }
 
-func (d *dompdb) IsValid() bool {
+func (d *DompDB) IsValid() bool {
 	return d.db != nil
 }
 
-func RunDB(dsn string, log logger.Recorder) (*dompdb, error) {
+func NewDompDB(dsn string, log logger.Recorder) (backup.MetricsBackup, error) {
 	log.Info("Database DSN: " + dsn)
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -133,7 +133,7 @@ func RunDB(dsn string, log logger.Recorder) (*dompdb, error) {
 		return nil, errPrep
 	}
 
-	dompdb := &dompdb{db: db, log: log}
+	dompdb := &DompDB{db: db, log: log}
 
 	log.Info("Connection to Database is OK")
 	return dompdb, nil
@@ -197,7 +197,7 @@ func PrepareTablesDB(db *sql.DB, log logger.Recorder) error {
 	return tx.Commit()
 }
 
-func (d *dompdb) UpdateMetricDB(mType constants.MetricType, mName string, mValue float64) error {
+func (d *DompDB) UpdateMetricDB(mType constants.MetricType, mName string, mValue float64) error {
 
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
@@ -223,54 +223,6 @@ func (d *dompdb) UpdateMetricDB(mType constants.MetricType, mName string, mValue
 	}
 
 	d.log.Info("Database update metric successfull.", zap.String("MetricName", mName), zap.Float64("Value", mValue))
-
-	return tx.Commit()
-}
-
-func (d *dompdb) UpdateBatchDB(gauge *map[string]float64, counter *map[string]int) error {
-
-	if gauge == nil || counter == nil {
-		return errors.New("UpdateBatchDB() failed. One of two maps is empty")
-	}
-
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-
-	tx, errBegin := d.db.Begin()
-
-	if errBegin != nil {
-		return errBegin
-	}
-
-	var err error
-
-	for k, v := range *gauge {
-		q := `INSERT INTO gauge (name, value)	VALUES ($1, $2)	ON CONFLICT (name)` +
-			`DO UPDATE SET name=EXCLUDED.name, value=$3;`
-
-		_, err = tx.ExecContext(context.TODO(), q, k, v, v)
-
-		if err != nil {
-			d.log.Error(err.Error())
-			tx.Rollback()
-			return err
-		}
-	}
-
-	for k, v := range *counter {
-		q := `INSERT INTO counter (name, value)	VALUES ($1, $2)	ON CONFLICT (name)` +
-			`DO UPDATE SET name=EXCLUDED.name, value=$3;`
-
-		_, err = tx.ExecContext(context.TODO(), q, k, v, v)
-
-		if err != nil {
-			d.log.Error(err.Error())
-			tx.Rollback()
-			return err
-		}
-	}
-
-	d.log.Info("Updating database by metrics  batches successfully.")
 
 	return tx.Commit()
 }

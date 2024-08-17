@@ -110,16 +110,16 @@ func (mStg *BackupSupportStorage) GetMetricByName(mType constants.MetricType, mN
 func (mStg *BackupSupportStorage) RestoreDataFromBackup() {
 	g, c := mStg.backup.GetAllData()
 
-	if g == nil || c == nil || (len(g) == 0) || (len(c) == 0) {
+	if g == nil || c == nil || (len(*g) == 0) || (len(*c) == 0) {
 		mStg.log.Info("Database is empty")
 		return
 	}
 
-	for k, v := range g {
+	for k, v := range *g {
 		mStg.UpdateMetricByName(constants.RenewOperation, constants.GaugeType, k, v)
 	}
 
-	for k, v := range c {
+	for k, v := range *c {
 		mStg.UpdateMetricByName(constants.AddOperation, constants.CounterType, k, float64(v))
 	}
 
