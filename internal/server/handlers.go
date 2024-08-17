@@ -14,8 +14,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 )
@@ -138,40 +136,6 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 			serv.coreStg.UpdateMetricByName(constants.AddOperation, mTypeConst, mName, valueInFloat)
 		}
 
-	RetryLoopLabel:
-		for _, v := range *constants.GetRetryIntervals() {
-			if v != 0 {
-				serv.log.Info("Update database or current metrics file failed. Try again...")
-				timer := time.NewTimer(time.Duration(v) * time.Second)
-				<-timer.C
-			}
-			var err error
-			switch serv.cfg.SaveMode {
-			case constants.DatabaseMode:
-				err = serv.db.UpdateMetricDB(mTypeConst, mName, valueInFloat)
-				if err == nil {
-					break RetryLoopLabel
-				}
-			case constants.FileMode:
-				var mJSON *bytes.Buffer
-				var errJSON error
-				mJSON, errJSON = funcslib.EncodeMetricJSON(mTypeConst, mName, valueInFloat)
-
-				if errJSON != nil {
-					serv.log.Error(errJSON.Error())
-					break RetryLoopLabel
-				}
-
-				err = serv.SaveCurrentMetrics(mJSON)
-				if err == nil {
-					if v != 0 {
-						serv.log.Info("Database or current metrics was successfully updated")
-					}
-					break RetryLoopLabel
-				}
-			}
-		}
-
 		res.Header().Set("Content-Type", "text/html")
 		res.WriteHeader(http.StatusOK)
 		res.Write([]byte("Metrics was been updated! Thank you!"))
@@ -215,40 +179,20 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 	mType := funcslib.ConvertStringToMetricType(mReceiver.MType)
 
 	if isUpdate {
-		err := serv.coreStg.UpdateMetricByName()
-		if err != nil {
-			serv.log.ErrorHTTP(res, err, http.StatusInternalServerError)
+		mType := funcslib.ConvertStringToMetricType(mReceiver.MType)
+		switch mType {
+		case constants.GaugeType:
+			if (*mReceiver).Value != nil {
+				serv.coreStg.UpdateMetricByName(constants.RenewOperation, mType, mReceiver.ID, *mReceiver.Value)
+			}
+		case constants.CounterType:
+			if (*mReceiver).Delta != nil {
+				serv.coreStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*(*mReceiver).Delta))
+			}
 		}
 	}
 
 	newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
-
-	if isUpdate {
-	RetryLoopLabel:
-		for _, v := range *constants.GetRetryIntervals() {
-			if v != 0 {
-				serv.log.Info("Update database or current metrics file failed. Try again...")
-				timer := time.NewTimer(time.Duration(v) * time.Second)
-				<-timer.C
-			}
-			var err error
-			switch serv.cfg.SaveMode {
-			case constants.FileMode:
-				updatedJSON, errJSON := funcslib.EncodeMetricJSON(mType, mReceiver.ID, newValue)
-				if errJSON == nil {
-					err = serv.SaveCurrentMetrics(updatedJSON)
-				}
-			case constants.DatabaseMode:
-				err = serv.db.UpdateMetricDB(mType, mReceiver.ID, newValue)
-			}
-			if err == nil {
-				if v != 0 {
-					serv.log.Info("Database or current metrics was successfully updated")
-				}
-				break RetryLoopLabel
-			}
-		}
-	}
 
 	respJSON, encodeErr := funcslib.EncodeMetricJSON(funcslib.ConvertStringToMetricType(mReceiver.MType), mReceiver.ID, newValue)
 	if encodeErr != nil {
@@ -280,35 +224,25 @@ func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Re
 	}
 
 	for _, m := range *mReceiver {
-		err = funcslib.UpdateStorageInterfaceByMetricStruct(serv.coreStg, &m)
-		if err != nil {
-			serv.log.ErrorHTTP(res, err, http.StatusInternalServerError)
-			return
-		}
-	}
-
-	for _, v := range *constants.GetRetryIntervals() {
-		if v != 0 {
-			serv.log.Info("Update database with batches failed. Try again...")
-			timer := time.NewTimer(time.Duration(v) * time.Second)
-			<-timer.C
-		}
-
-		err := serv.db.UpdateBatchDB(serv.coreStg)
-
-		var pgErr *pgconn.PgError
-
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == pgerrcode.UniqueViolation {
-				continue
+		mType := funcslib.ConvertStringToMetricType(m.MType)
+		switch mType {
+		case constants.GaugeType:
+			if (m).Value != nil {
+				err = serv.coreStg.UpdateMetricByName(constants.RenewOperation, mType, m.ID, *m.Value)
+			}
+			if err != nil {
+				serv.log.ErrorHTTP(res, err, http.StatusInternalServerError)
+				return
+			}
+		case constants.CounterType:
+			if (m).Delta != nil {
+				err = serv.coreStg.UpdateMetricByName(constants.AddOperation, mType, m.ID, float64(*m.Delta))
+			}
+			if err != nil {
+				serv.log.ErrorHTTP(res, err, http.StatusInternalServerError)
+				return
 			}
 		}
-		break
-	}
-
-	if err != nil {
-		serv.log.ErrorHTTP(res, err, http.StatusBadRequest)
-		return
 	}
 
 	res.WriteHeader(http.StatusOK)

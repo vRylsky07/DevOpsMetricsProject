@@ -41,7 +41,7 @@ func NewMemStorage() MetricsRepository {
 	return &MemStorage{gauge: map[string]float64{}, counter: map[string]int{}}
 }
 
-func (mStg *MemStorage) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) {
+func (mStg *MemStorage) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) error {
 
 	mStg.mtx.Lock()
 	defer mStg.mtx.Unlock()
@@ -59,6 +59,7 @@ func (mStg *MemStorage) UpdateMetricByName(oper constants.UpdateOperation, mType
 		mStg.counter[mName] += int(mValue)
 	}
 
+	return nil
 }
 
 func (mStg *MemStorage) GetMetricByName(mType constants.MetricType, mName string) (float64, error) {

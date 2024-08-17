@@ -7,6 +7,9 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type BackupSupportStorage struct {
@@ -53,7 +56,7 @@ func NewBackupSupportStorage(restore bool, backup backup.MetricsBackup, log logg
 	return mStg
 }
 
-func (mStg *BackupSupportStorage) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) {
+func (mStg *BackupSupportStorage) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) error {
 
 	mStg.mtx.Lock()
 	defer mStg.mtx.Unlock()
@@ -84,11 +87,24 @@ func (mStg *BackupSupportStorage) UpdateMetricByName(oper constants.UpdateOperat
 			<-timer.C
 		}
 		err = mStg.backup.UpdateMetricDB(mType, mName, updatedValue)
+
 		if err == nil {
 			mStg.log.Info("Backup storage was successfully updated")
 			break
 		}
+
+		var pgErr *pgconn.PgError
+
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				continue
+			}
+		} else {
+			break
+		}
 	}
+
+	return err
 }
 
 func (mStg *BackupSupportStorage) GetMetricByName(mType constants.MetricType, mName string) (float64, error) {
