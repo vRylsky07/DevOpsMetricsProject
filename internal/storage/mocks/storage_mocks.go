@@ -34,6 +34,20 @@ func (m *MockMetricsRepository) EXPECT() *MockMetricsRepositoryMockRecorder {
 	return m.recorder
 }
 
+// CheckBackupStatus mocks base method.
+func (m *MockMetricsRepository) CheckBackupStatus() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckBackupStatus")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CheckBackupStatus indicates an expected call of CheckBackupStatus.
+func (mr *MockMetricsRepositoryMockRecorder) CheckBackupStatus() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckBackupStatus", reflect.TypeOf((*MockMetricsRepository)(nil).CheckBackupStatus))
+}
+
 // GetMetricByName mocks base method.
 func (m *MockMetricsRepository) GetMetricByName(mType constants.MetricType, mName string) (float64, error) {
 	m.ctrl.T.Helper()
@@ -49,16 +63,18 @@ func (mr *MockMetricsRepositoryMockRecorder) GetMetricByName(mType, mName interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricByName", reflect.TypeOf((*MockMetricsRepository)(nil).GetMetricByName), mType, mName)
 }
 
-// InitMemStorage mocks base method.
-func (m *MockMetricsRepository) InitMemStorage() {
+// IsValid mocks base method.
+func (m *MockMetricsRepository) IsValid() bool {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "InitMemStorage")
+	ret := m.ctrl.Call(m, "IsValid")
+	ret0, _ := ret[0].(bool)
+	return ret0
 }
 
-// InitMemStorage indicates an expected call of InitMemStorage.
-func (mr *MockMetricsRepositoryMockRecorder) InitMemStorage() *gomock.Call {
+// IsValid indicates an expected call of IsValid.
+func (mr *MockMetricsRepositoryMockRecorder) IsValid() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitMemStorage", reflect.TypeOf((*MockMetricsRepository)(nil).InitMemStorage))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsValid", reflect.TypeOf((*MockMetricsRepository)(nil).IsValid))
 }
 
 // ReadMemStorageFields mocks base method.
@@ -77,9 +93,11 @@ func (mr *MockMetricsRepositoryMockRecorder) ReadMemStorageFields() *gomock.Call
 }
 
 // UpdateMetricByName mocks base method.
-func (m *MockMetricsRepository) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) {
+func (m *MockMetricsRepository) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "UpdateMetricByName", oper, mType, mName, mValue)
+	ret := m.ctrl.Call(m, "UpdateMetricByName", oper, mType, mName, mValue)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // UpdateMetricByName indicates an expected call of UpdateMetricByName.

@@ -1,6 +1,16 @@
 package sender
 
-/*
+import (
+	mock_storage "DevOpsMetricsProject/internal/storage/mocks"
+
+	"DevOpsMetricsProject/internal/configs"
+	"DevOpsMetricsProject/internal/constants"
+	"testing"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+)
+
 func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
@@ -51,6 +61,7 @@ func TestSenderStorage_updateCounterMetrics(t *testing.T) {
 	}
 }
 
+/*
 func TestSenderStorage_UpdateMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
@@ -76,6 +87,7 @@ func TestSenderStorage_UpdateMetrics(t *testing.T) {
 		})
 	}
 }
+
 
 func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 	g := map[string]float64{"testGauge": 1}

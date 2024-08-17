@@ -7,14 +7,22 @@ type StorageMockCustom struct {
 	Counter map[string]int
 }
 
-func (ssm *StorageMockCustom) InitMemStorage() {}
-func (ssm *StorageMockCustom) ReadMemStorageFields() (g map[string]float64, c map[string]int) {
+func (ssm *StorageMockCustom) ReadMemStorageFields() (map[string]float64, map[string]int) {
 	return ssm.Gauge, ssm.Counter
 }
 
-func (ssm *StorageMockCustom) UpdateMetricByName(_ constants.UpdateOperation, _ constants.MetricType, _ string, _ float64) {
+func (ssm *StorageMockCustom) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) error {
+	return nil
 }
 
 func (ssm *StorageMockCustom) GetMetricByName(_ constants.MetricType, _ string) (float64, error) {
 	return 0, nil
+}
+
+func (ssm *StorageMockCustom) IsValid() bool {
+	return false
+}
+
+func (ssm *StorageMockCustom) CheckBackupStatus() error {
+	return nil
 }
