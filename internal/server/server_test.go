@@ -3,7 +3,7 @@ package server
 import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
-	storage_custom_mocks "DevOpsMetricsProject/internal/storage/custom_mock"
+	storage_custom_mocks "DevOpsMetricsProject/internal/storage/custommock"
 
 	"net/http"
 	"net/http/httptest"

@@ -5,7 +5,6 @@ import (
 	funcslib "DevOpsMetricsProject/internal/funcslib"
 	"bytes"
 	"compress/gzip"
-	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -216,7 +215,7 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 	mType := funcslib.ConvertStringToMetricType(mReceiver.MType)
 
 	if isUpdate {
-		err := funcslib.UpdateStorageInterfaceByMetricStruct(serv.coreStg, mReceiver)
+		err := serv.coreStg.UpdateMetricByName()
 		if err != nil {
 			serv.log.ErrorHTTP(res, err, http.StatusInternalServerError)
 		}
@@ -318,9 +317,7 @@ func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Re
 
 func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, _ *http.Request) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-	if err := serv.db.GetDB().PingContext(ctx); err != nil {
+	if err := serv.coreStg.; err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}

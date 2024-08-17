@@ -3,12 +3,10 @@ package funcslib
 import (
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/coretypes"
-	"DevOpsMetricsProject/internal/storage"
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"math/rand"
 	"strings"
@@ -81,15 +79,19 @@ func DecodeMetricJSON(req io.ReadCloser) (*coretypes.Metrics, error) {
 	return &mReceiver, err
 }
 
-func EncodeBatchJSON(mStg storage.MetricsRepository) (*bytes.Buffer, error) {
-	gauge, counter := mStg.ReadMemStorageFields()
-	length := len(gauge) + len(counter)
+func EncodeBatchJSON(gauge *map[string]float64, counter *map[string]int) (*bytes.Buffer, error) {
+
+	if gauge == nil || counter == nil {
+		return nil, errors.New("EncodeBatchJSON() failed. One of two maps is empty")
+	}
+
+	length := len(*gauge) + len(*counter)
 
 	mArray := make([]coretypes.Metrics, length)
 
 	i := 0
 
-	for k, v := range gauge {
+	for k, v := range *gauge {
 		if i == length {
 			break
 		}
@@ -98,7 +100,7 @@ func EncodeBatchJSON(mStg storage.MetricsRepository) (*bytes.Buffer, error) {
 		i++
 	}
 
-	for k, v := range counter {
+	for k, v := range *counter {
 		if i == length {
 			break
 		}
@@ -165,28 +167,4 @@ func DecompressData(body io.ReadCloser) (io.ReadCloser, error) {
 	newReadCloser := io.NopCloser(newReader)
 
 	return newReadCloser, nil
-}
-
-func UpdateStorageInterfaceByMetricStruct(sStg storage.MetricsRepository, mReceiver *coretypes.Metrics) error {
-	mType := ConvertStringToMetricType(mReceiver.MType)
-
-	switch mType {
-	case constants.GaugeType:
-		if mReceiver.Value == nil {
-			return fmt.Errorf("updating gauge value pointer is nil, ID=%s", mReceiver.ID)
-		}
-		sStg.UpdateMetricByName(constants.RenewOperation, mType, mReceiver.ID, *mReceiver.Value)
-		return nil
-
-	case constants.CounterType:
-		if mReceiver.Delta == nil {
-			return fmt.Errorf("updating counter value pointer is nil, ID=%s", mReceiver.ID)
-		}
-		sStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*mReceiver.Delta))
-		return nil
-
-	default:
-		convertErr := "ConvertStringToMetricType returns NoneType"
-		return errors.New(convertErr)
-	}
 }

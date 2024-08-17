@@ -1,23 +1,21 @@
 package storage
 
 import (
+	backup "DevOpsMetricsProject/internal/backups"
 	"DevOpsMetricsProject/internal/constants"
+	"DevOpsMetricsProject/internal/logger"
 	"errors"
 	"sync"
 )
-
-//go:generate mockgen -source=storage.go -destination=mocks/storage_mocks.go
-type MetricsRepository interface {
-	InitMemStorage()
-	ReadMemStorageFields() (g map[string]float64, c map[string]int)
-	UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64)
-	GetMetricByName(mType constants.MetricType, mName string) (float64, error)
-}
 
 type MemStorage struct {
 	gauge   map[string]float64
 	counter map[string]int
 	mtx     sync.Mutex
+}
+
+func (mStg *MemStorage) CheckBackupStatus() error {
+	return nil
 }
 
 func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[string]int) {
@@ -37,7 +35,7 @@ func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[stri
 	return gaugeOut, counterOut
 }
 
-func (mStg *MemStorage) InitMemStorage() {
+func (mStg *MemStorage) InitMemStorage(_ bool, _ backup.MetricsBackup, _ logger.Recorder) {
 	mStg.gauge, mStg.counter = map[string]float64{}, map[string]int{}
 }
 
@@ -58,6 +56,7 @@ func (mStg *MemStorage) UpdateMetricByName(oper constants.UpdateOperation, mType
 		}
 		mStg.counter[mName] += int(mValue)
 	}
+
 }
 
 func (mStg *MemStorage) GetMetricByName(mType constants.MetricType, mName string) (float64, error) {

@@ -1,12 +1,12 @@
-package server
+package dompdb
 
 import (
 	"DevOpsMetricsProject/internal/constants"
-	funcslib "DevOpsMetricsProject/internal/funcslib"
+	"DevOpsMetricsProject/internal/funcslib"
 	"DevOpsMetricsProject/internal/logger"
-	"DevOpsMetricsProject/internal/storage"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -14,22 +14,14 @@ import (
 	"go.uber.org/zap"
 )
 
-type DompInterfaceDB interface {
-	UpdateMetricDB(mType constants.MetricType, mName string, mValue float64) error
-	UpdateBatchDB(sStg storage.MetricsRepository) error
-	IsValid() bool
-	GetAllData() (g map[string]float64, c map[string]int)
-	GetDB() *sql.DB
-}
-
 type dompdb struct {
 	db  *sql.DB
 	log logger.Recorder
 	mtx sync.Mutex
 }
 
-func (d *dompdb) GetDB() *sql.DB {
-	return d.db
+func (d *dompdb) CheckBackupStatus() error {
+	return d.db.PingContext(context.TODO())
 }
 
 func (d *dompdb) GetAllData() (g map[string]float64, c map[string]int) {
@@ -235,11 +227,14 @@ func (d *dompdb) UpdateMetricDB(mType constants.MetricType, mName string, mValue
 	return tx.Commit()
 }
 
-func (d *dompdb) UpdateBatchDB(sStg storage.MetricsRepository) error {
+func (d *dompdb) UpdateBatchDB(gauge *map[string]float64, counter *map[string]int) error {
+
+	if gauge == nil || counter == nil {
+		return errors.New("UpdateBatchDB() failed. One of two maps is empty")
+	}
+
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-
-	gauge, counter := sStg.ReadMemStorageFields()
 
 	tx, errBegin := d.db.Begin()
 
@@ -249,7 +244,7 @@ func (d *dompdb) UpdateBatchDB(sStg storage.MetricsRepository) error {
 
 	var err error
 
-	for k, v := range gauge {
+	for k, v := range *gauge {
 		q := `INSERT INTO gauge (name, value)	VALUES ($1, $2)	ON CONFLICT (name)` +
 			`DO UPDATE SET name=EXCLUDED.name, value=$3;`
 
@@ -262,7 +257,7 @@ func (d *dompdb) UpdateBatchDB(sStg storage.MetricsRepository) error {
 		}
 	}
 
-	for k, v := range counter {
+	for k, v := range *counter {
 		q := `INSERT INTO counter (name, value)	VALUES ($1, $2)	ON CONFLICT (name)` +
 			`DO UPDATE SET name=EXCLUDED.name, value=$3;`
 

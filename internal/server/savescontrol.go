@@ -2,7 +2,6 @@ package server
 
 import (
 	"DevOpsMetricsProject/internal/configs"
-	"DevOpsMetricsProject/internal/constants"
 	funcslib "DevOpsMetricsProject/internal/funcslib"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
@@ -202,33 +201,7 @@ func CreateMetricsSave(interval int, log logger.Recorder) *MetricsSave {
 	return &MetricsSave{interval, file}
 }
 
-func RestoreDataFromDB(db DompInterfaceDB, sStg storage.MetricsRepository, log logger.Recorder) {
-	g, c := db.GetAllData()
-
-	if g == nil || c == nil || (len(g) == 0) || (len(c) == 0) {
-		log.Info("Database is empty")
-		return
-	}
-
-	for k, v := range g {
-		sStg.UpdateMetricByName(constants.RenewOperation, constants.GaugeType, k, v)
-	}
-
-	for k, v := range c {
-		sStg.UpdateMetricByName(constants.AddOperation, constants.CounterType, k, float64(v))
-	}
-
-	log.Info("Restore data from database successfully")
-}
-
-func RestoreData(cfg *configs.ServerConfig, db DompInterfaceDB, sStg storage.MetricsRepository, log logger.Recorder) *MetricsSave {
-
-	if cfg.SaveMode == constants.DatabaseMode {
-		if cfg.RestoreBool {
-			RestoreDataFromDB(db, sStg, log)
-		}
-		return nil
-	}
+func RestoreData(cfg *configs.ServerConfig, sStg storage.MetricsRepository, log logger.Recorder) *MetricsSave {
 
 	if !cfg.RestoreBool || sStg == nil {
 		return CreateMetricsSave(cfg.StoreInterval, log)

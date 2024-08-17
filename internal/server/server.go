@@ -19,7 +19,7 @@ type dompserver struct {
 	currentMetrics *os.File
 	cfg            *configs.ServerConfig
 	savefile       *MetricsSave
-	db             DompInterfaceDB
+	db             storage.DompInterfaceDB
 	log            logger.Recorder
 }
 
