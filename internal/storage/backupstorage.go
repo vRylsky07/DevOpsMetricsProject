@@ -17,6 +17,10 @@ type BackupSupportStorage struct {
 	mtx     sync.Mutex
 }
 
+func (mStg *BackupSupportStorage) IsValid() bool {
+	return mStg.backup != nil && mStg.log != nil && mStg.gauge != nil && mStg.counter != nil
+}
+
 func (mStg *BackupSupportStorage) CheckBackupStatus() error {
 	return mStg.backup.CheckBackupStatus()
 }
@@ -38,13 +42,15 @@ func (mStg *BackupSupportStorage) ReadMemStorageFields() (g map[string]float64, 
 	return gaugeOut, counterOut
 }
 
-func (mStg *BackupSupportStorage) InitMemStorage(restore bool, backup backup.MetricsBackup, log logger.Recorder) {
+func NewBackupSupportStorage(restore bool, backup backup.MetricsBackup, log logger.Recorder) MetricsRepository {
+	mStg := &BackupSupportStorage{}
 	mStg.backup = backup
 	mStg.log = log
 	mStg.gauge, mStg.counter = map[string]float64{}, map[string]int{}
 	if restore {
 		mStg.RestoreDataFromBackup()
 	}
+	return mStg
 }
 
 func (mStg *BackupSupportStorage) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) {

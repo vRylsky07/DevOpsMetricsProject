@@ -50,12 +50,8 @@ func (sStg *dompsender) GetStorage() storage.MetricsRepository {
 }
 
 func (sStg *dompsender) UpdateMetrics() {
-	if !sStg.IsValid() {
+	if !sStg.IsValid() || sStg.GetStorage() == nil {
 		return
-	}
-
-	if sStg.GetStorage() == nil {
-		sStg.GetStorage().InitMemStorage()
 	}
 
 	var ticker *time.Ticker
@@ -117,8 +113,7 @@ func (sStg *dompsender) StopAgentProcessing() {
 }
 
 func CreateSender(cfg *configs.ClientConfig) (*dompsender, error) {
-	senderStorage := storage.MemStorage{}
-	senderStorage.InitMemStorage()
+	senderStorage := storage.NewMemStorage()
 
 	log, err := logger.Initialize(cfg.Loglevel, "agent_")
 
@@ -126,29 +121,21 @@ func CreateSender(cfg *configs.ClientConfig) (*dompsender, error) {
 		return nil, err
 	}
 
-	mSender := &dompsender{senderMemStorage: &senderStorage, cfg: cfg, log: log}
+	mSender := &dompsender{senderMemStorage: senderStorage, cfg: cfg, log: log}
 	return mSender, nil
 }
 
 func (sStg *dompsender) updateCounterMetrics() {
-	if !sStg.IsValid() {
+	if !sStg.IsValid() || sStg.GetStorage() == nil {
 		return
-	}
-
-	if sStg.GetStorage() == nil {
-		sStg.GetStorage().InitMemStorage()
 	}
 
 	sStg.GetStorage().UpdateMetricByName(constants.AddOperation, constants.CounterType, "PollCount", 1)
 }
 
 func (sStg *dompsender) updateGaugeMetrics() {
-	if !sStg.IsValid() {
+	if !sStg.IsValid() || sStg.GetStorage() == nil {
 		return
-	}
-
-	if sStg.GetStorage() == nil {
-		sStg.GetStorage().InitMemStorage()
 	}
 
 	mFromRuntime := &runtime.MemStats{}
@@ -270,7 +257,8 @@ func (sStg *dompsender) ManageRequests(catchErrs *[]error, ticker *time.Ticker) 
 
 	switch sStg.cfg.UseBatches {
 	case true:
-		mJSON, errJSON = funcslib.EncodeBatchJSON(sStg.GetStorage())
+		g, c := sStg.GetStorage().ReadMemStorageFields()
+		mJSON, errJSON = funcslib.EncodeBatchJSON(&g, &c)
 		sStg.postRequestByMetricType(ticker, "batch", mJSON, errJSON, catchErrs)
 	case false:
 

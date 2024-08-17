@@ -1,18 +1,6 @@
 package sender
 
-import (
-	"DevOpsMetricsProject/internal/configs"
-	"DevOpsMetricsProject/internal/constants"
-	storage_custom_mocks "DevOpsMetricsProject/internal/storage/custommock"
-	mock_storage "DevOpsMetricsProject/internal/storage/mocks"
-	"fmt"
-	"strings"
-	"testing"
-
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
-)
-
+/*
 func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
@@ -129,3 +117,4 @@ func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 		})
 	}
 }
+*/

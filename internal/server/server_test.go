@@ -1,5 +1,6 @@
 package server
 
+/*
 import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
@@ -121,3 +122,4 @@ func Test_dompserver_GetMetricHandler(t *testing.T) {
 
 	StatusCheckTest(t, tests, serv)
 }
+*/

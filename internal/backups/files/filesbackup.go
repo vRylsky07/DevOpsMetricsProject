@@ -15,8 +15,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 type FilesBackup struct {
@@ -34,7 +32,7 @@ func (fb *FilesBackup) CheckBackupStatus() error {
 	return nil
 }
 
-func NewMetricsBackup(cfg configs.ServerConfig, log logger.Recorder) (backup.MetricsBackup, error) {
+func NewMetricsBackup(cfg *configs.ServerConfig, log logger.Recorder) (backup.MetricsBackup, error) {
 	tFile := CreateTempFile(cfg.TempFile, log)
 	sFile := CreateMetricsSave(cfg.StoreInterval, log)
 
@@ -48,7 +46,7 @@ func NewMetricsBackup(cfg configs.ServerConfig, log logger.Recorder) (backup.Met
 
 	switch {
 	case cfg.StoreInterval > 0:
-		ticker := time.NewTicker(time.Duration(fb.storeInterval) * time.Second)
+		ticker := time.NewTicker(time.Duration(cfg.StoreInterval) * time.Second)
 
 		go func() {
 			defer ticker.Stop()
@@ -137,14 +135,14 @@ func (fb *FilesBackup) TransferMetricsToFile() error {
 func (fb *FilesBackup) GetAllData() (*map[string]float64, *map[string]int) {
 	errMkDir := os.MkdirAll(GetMetricsSaveFileDir(), os.ModePerm)
 	if errMkDir != nil {
-		log.Error(errMkDir.Error())
+		fb.log.Error(errMkDir.Error())
 		return nil, nil
 	}
 
 	file, err := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR|os.O_CREATE, 0666)
 
 	if err != nil {
-		log.Error(err.Error())
+		fb.log.Error(err.Error())
 		return nil, nil
 	}
 
@@ -152,8 +150,8 @@ func (fb *FilesBackup) GetAllData() (*map[string]float64, *map[string]int) {
 
 	scanner := bufio.NewScanner(file)
 
-	var g map[string]float64
-	var c map[string]int
+	g := make(map[string]float64)
+	c := make(map[string]int)
 
 	for scanner.Scan() {
 		line := io.NopCloser(strings.NewReader(string(scanner.Bytes())))
@@ -161,19 +159,19 @@ func (fb *FilesBackup) GetAllData() (*map[string]float64, *map[string]int) {
 		metricStruct, err := funcslib.DecodeMetricJSON(line)
 
 		if err != nil {
-			log.Error(err.Error())
+			fb.log.Error(err.Error())
 			continue
 		}
 
 		switch funcslib.ConvertStringToMetricType(metricStruct.MType) {
 		case constants.GaugeType:
 			if (*metricStruct).Value != nil {
-				g[metricStruct.ID] = *metricStruct.Value
+				g[metricStruct.ID] += *metricStruct.Value
 			}
 
 		case constants.CounterType:
 			if (*metricStruct).Delta != nil {
-				c[metricStruct.ID] = int(*metricStruct.Delta)
+				c[metricStruct.ID] += int(*metricStruct.Delta)
 			}
 		}
 

@@ -1,36 +1,29 @@
 package server
 
 import (
+	backup "DevOpsMetricsProject/internal/backups"
+	"DevOpsMetricsProject/internal/backups/dompdb"
+	filesbackup "DevOpsMetricsProject/internal/backups/files"
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
 	"errors"
 	"net/http"
-	"os"
 
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type dompserver struct {
-	coreMux        *chi.Mux
-	coreStg        storage.MetricsRepository
-	currentMetrics *os.File
-	cfg            *configs.ServerConfig
-	savefile       *MetricsSave
-	db             storage.DompInterfaceDB
-	log            logger.Recorder
+	coreMux *chi.Mux
+	coreStg storage.MetricsRepository
+	cfg     *configs.ServerConfig
+	log     logger.Recorder
 }
 
 func (serv *dompserver) IsValid() bool {
-	if serv.coreMux != nil || serv.coreStg != nil || serv.currentMetrics != nil || serv.cfg != nil || serv.savefile != nil || serv.savefile.IsValid() || serv.log != nil {
-		if (serv.cfg.SaveMode == constants.DatabaseMode) && (serv.db == nil || !serv.db.IsValid()) {
-			return false
-		}
-		return true
-	}
-	return false
+	return serv.coreMux != nil || serv.coreStg.IsValid() || serv.cfg != nil || serv.log != nil
 }
 
 func Start() {
@@ -38,10 +31,6 @@ func Start() {
 
 	if err != nil {
 		panic(err)
-	}
-
-	if dompserv.cfg.SaveMode == constants.FileMode {
-		dompserv.StartSaveMetricsThread()
 	}
 
 	dompserv.log.Info("Server was successfully initialized!")
@@ -85,10 +74,6 @@ func CreateNewServer(cfg *configs.ServerConfig) (*dompserver, error) {
 }
 
 func NewDompServer(cfg *configs.ServerConfig) (*dompserver, error) {
-	coreMux := chi.NewRouter()
-	coreStg := &storage.MemStorage{}
-	coreStg.InitMemStorage()
-
 	var errs []error
 
 	logger, errLog := logger.Initialize(cfg.Loglevel, "server_")
@@ -97,34 +82,34 @@ func NewDompServer(cfg *configs.ServerConfig) (*dompserver, error) {
 		errs = append(errs, errLog)
 	}
 
-	var currentMetrics *os.File
-	var db DompInterfaceDB
+	coreMux := chi.NewRouter()
+
+	var coreStg storage.MetricsRepository
+	var backup backup.MetricsBackup
+	var bckErr error
 
 	switch cfg.SaveMode {
 	case constants.DatabaseMode:
-		var err error
-		db, err = RunDB(cfg.DatabaseDSN, logger)
-
-		if err != nil {
-			errs = append(errs, errLog)
+		backup, bckErr = dompdb.NewDompDB(cfg.DatabaseDSN, logger)
+		if bckErr != nil {
+			errs = append(errs, bckErr)
 		}
-
+		coreStg = storage.NewBackupSupportStorage(cfg.RestoreBool, backup, logger)
 	case constants.FileMode:
-		currentMetrics = CreateTempFile(cfg.TempFile, cfg.RestoreBool, logger)
-	}
-
-	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
+		backup, bckErr = filesbackup.NewMetricsBackup(cfg, logger)
+		if bckErr != nil {
+			errs = append(errs, bckErr)
+		}
+		coreStg = storage.NewBackupSupportStorage(cfg.RestoreBool, backup, logger)
+	case constants.InMemoryMode:
+		coreStg = storage.NewMemStorage()
 	}
 
 	serv := &dompserver{
-		coreMux:        coreMux,
-		coreStg:        coreStg,
-		currentMetrics: currentMetrics,
-		cfg:            cfg,
-		savefile:       RestoreData(cfg, db, coreStg, logger),
-		db:             db,
-		log:            logger,
+		coreMux: coreMux,
+		coreStg: coreStg,
+		cfg:     cfg,
+		log:     logger,
 	}
 
 	return serv, errors.Join(errs...)

@@ -317,7 +317,7 @@ func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Re
 
 func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, _ *http.Request) {
 
-	if err := serv.coreStg.; err != nil {
+	if err := serv.coreStg.CheckBackupStatus(); err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
