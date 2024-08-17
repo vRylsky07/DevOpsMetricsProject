@@ -34,7 +34,7 @@ func (fb *FilesBackup) CheckBackupStatus() error {
 
 func NewMetricsBackup(cfg *configs.ServerConfig, log logger.Recorder) (backup.MetricsBackup, error) {
 	tFile := CreateTempFile(cfg.TempFile, log)
-	sFile := CreateMetricsSave(cfg.StoreInterval, log)
+	sFile := CreateMetricsSave(cfg.RestoreBool, log)
 
 	fBack := &FilesBackup{currentMetrics: tFile, savefile: sFile, storeInterval: cfg.StoreInterval, log: log}
 
@@ -166,15 +166,14 @@ func (fb *FilesBackup) GetAllData() (*map[string]float64, *map[string]int) {
 		switch funcslib.ConvertStringToMetricType(metricStruct.MType) {
 		case constants.GaugeType:
 			if (*metricStruct).Value != nil {
-				g[metricStruct.ID] += *metricStruct.Value
+				g[metricStruct.ID] = *metricStruct.Value
 			}
 
 		case constants.CounterType:
 			if (*metricStruct).Delta != nil {
-				c[metricStruct.ID] += int(*metricStruct.Delta)
+				c[metricStruct.ID] = int(*metricStruct.Delta)
 			}
 		}
-
 	}
 
 	return &g, &c
@@ -231,7 +230,18 @@ func CreateTempFile(filename string, log logger.Recorder) *os.File {
 	return tFile
 }
 
-func CreateMetricsSave(interval int, log logger.Recorder) *os.File {
+func CreateMetricsSave(restore bool, log logger.Recorder) *os.File {
+
+	if restore {
+		file, err := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR|os.O_CREATE, 0666)
+
+		if err != nil {
+			log.Error(err.Error())
+			return nil
+		}
+		return file
+	}
+
 	dir := filepath.Join(".", "saved")
 
 	err := os.MkdirAll(dir, os.ModePerm)
