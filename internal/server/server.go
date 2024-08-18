@@ -82,6 +82,16 @@ func NewDompServer(cfg *configs.ServerConfig) (*dompserver, error) {
 		errs = append(errs, errLog)
 	}
 
+	mode := ""
+	switch cfg.SaveMode {
+	case constants.DatabaseMode:
+		mode = "IS DATABASE MODE"
+	case constants.FileMode:
+		mode = "IS FILE MODE"
+	case constants.InMemoryMode:
+		mode = "IS MEMORY MODE"
+	}
+	logger.Info(mode)
 	coreMux := chi.NewRouter()
 
 	var coreStg storage.MetricsRepository
