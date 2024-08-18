@@ -37,12 +37,14 @@ func (mStg *BackupSupportStorage) UpdateMetricByName(oper constants.UpdateOperat
 	mStg.mtx.Lock()
 	defer mStg.mtx.Unlock()
 	var updatedValue float64
+	var previousValue float64
 
 	switch mType {
 	case constants.GaugeType:
 		if oper == constants.RenewOperation {
 			mStg.gauge[mName] = 0
 		}
+		previousValue = mStg.gauge[mName]
 		mStg.gauge[mName] += mValue
 		updatedValue = mStg.gauge[mName]
 
@@ -50,6 +52,7 @@ func (mStg *BackupSupportStorage) UpdateMetricByName(oper constants.UpdateOperat
 		if oper == constants.RenewOperation {
 			mStg.counter[mName] = 0
 		}
+		previousValue = float64(mStg.counter[mName])
 		mStg.counter[mName] += int(mValue)
 		updatedValue = float64(mStg.counter[mName])
 	}
@@ -64,19 +67,23 @@ func (mStg *BackupSupportStorage) UpdateMetricByName(oper constants.UpdateOperat
 		}
 		err = mStg.backup.UpdateMetricDB(mType, mName, updatedValue)
 
-		if err == nil {
-			mStg.log.Info("Backup storage was successfully updated")
-			break
-		}
-
 		var pgErr *pgconn.PgError
-
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
 				continue
 			}
 		} else {
 			break
+		}
+	}
+
+	if err != nil {
+		switch mType {
+		case constants.GaugeType:
+			mStg.gauge[mName] = previousValue
+
+		case constants.CounterType:
+			mStg.counter[mName] = int(previousValue)
 		}
 	}
 
@@ -87,7 +94,7 @@ func (mStg *BackupSupportStorage) RestoreDataFromBackup() {
 	g, c := mStg.backup.GetAllData()
 
 	if g == nil || c == nil || (len(*g) == 0) || (len(*c) == 0) {
-		mStg.log.Info("Database is empty")
+		mStg.log.Info("Metrics backuping storage is empty")
 		return
 	}
 
@@ -99,5 +106,5 @@ func (mStg *BackupSupportStorage) RestoreDataFromBackup() {
 		mStg.UpdateMetricByName(constants.AddOperation, constants.CounterType, k, float64(v))
 	}
 
-	mStg.log.Info("Restore data from database successfully")
+	mStg.log.Info("Restore data from metrics backup successfully")
 }

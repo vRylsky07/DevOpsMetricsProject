@@ -129,11 +129,19 @@ func (serv *dompserver) UpdateMetricHandler(res http.ResponseWriter, req *http.R
 
 	if (mType == "gauge" || mType == "counter") && err == nil {
 
+		var errUpd error
 		switch mTypeConst {
 		case constants.GaugeType:
-			serv.coreStg.UpdateMetricByName(constants.RenewOperation, mTypeConst, mName, valueInFloat)
+			errUpd = serv.coreStg.UpdateMetricByName(constants.RenewOperation, mTypeConst, mName, valueInFloat)
 		case constants.CounterType:
-			serv.coreStg.UpdateMetricByName(constants.AddOperation, mTypeConst, mName, valueInFloat)
+			errUpd = serv.coreStg.UpdateMetricByName(constants.AddOperation, mTypeConst, mName, valueInFloat)
+		}
+
+		if errUpd != nil {
+			serv.log.ErrorHTTP(res, errUpd, http.StatusInternalServerError)
+			return
+		} else {
+			serv.log.Info("Server storage was successfully updated")
 		}
 
 		res.Header().Set("Content-Type", "text/html")
@@ -178,17 +186,26 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 
 	mType := funcslib.ConvertStringToMetricType(mReceiver.MType)
 
+	var errUpd error
+
 	if isUpdate {
 		switch mType {
 		case constants.GaugeType:
 			if (*mReceiver).Value != nil {
-				serv.coreStg.UpdateMetricByName(constants.RenewOperation, mType, mReceiver.ID, *mReceiver.Value)
+				errUpd = serv.coreStg.UpdateMetricByName(constants.RenewOperation, mType, mReceiver.ID, *mReceiver.Value)
 			}
 		case constants.CounterType:
 			if (*mReceiver).Delta != nil {
-				serv.coreStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*(*mReceiver).Delta))
+				errUpd = serv.coreStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*(*mReceiver).Delta))
 			}
 		}
+	}
+
+	if errUpd != nil {
+		serv.log.ErrorHTTP(res, errUpd, http.StatusInternalServerError)
+		return
+	} else {
+		serv.log.Info("Server storage was successfully updated")
 	}
 
 	newValue, _ = serv.coreStg.GetMetricByName(mType, mReceiver.ID)
@@ -244,6 +261,9 @@ func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Re
 		}
 	}
 
+	success := "Metrics storage was been successfully updated"
+
+	serv.log.Info(success)
 	res.WriteHeader(http.StatusOK)
 	res.Write([]byte("Metrics was been updated by batch! Thank you!"))
 }
