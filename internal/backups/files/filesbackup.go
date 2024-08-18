@@ -154,6 +154,7 @@ func (fb *FilesBackup) GetAllData() (*map[string]float64, *map[string]int) {
 	c := make(map[string]int)
 
 	for scanner.Scan() {
+		fb.log.Info("WTF: " + scanner.Text())
 		line := io.NopCloser(strings.NewReader(string(scanner.Bytes())))
 
 		metricStruct, err := funcslib.DecodeMetricJSON(line)
@@ -233,15 +234,13 @@ func CreateTempFile(filename string, log logger.Recorder) *os.File {
 func CreateMetricsSave(restore bool, log logger.Recorder) *os.File {
 
 	if restore {
-		log.Info("RESTORE SAVE START")
 		file, err := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR|os.O_CREATE, 0666)
 
 		if err != nil {
 			log.Error(err.Error())
 			return nil
 		}
-
-		log.Info("RESTORE SAVE OVER")
+		//defer file.Close()
 		return file
 	}
 
