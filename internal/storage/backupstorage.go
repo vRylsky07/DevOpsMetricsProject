@@ -5,7 +5,6 @@ import (
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/logger"
 	"errors"
-	"sync"
 	"time"
 
 	"github.com/jackc/pgerrcode"
@@ -13,36 +12,9 @@ import (
 )
 
 type BackupSupportStorage struct {
-	backup  backup.MetricsBackup
-	log     logger.Recorder
-	gauge   map[string]float64
-	counter map[string]int
-	mtx     sync.Mutex
-}
-
-func (mStg *BackupSupportStorage) IsValid() bool {
-	return mStg.backup != nil && mStg.log != nil && mStg.gauge != nil && mStg.counter != nil
-}
-
-func (mStg *BackupSupportStorage) CheckBackupStatus() error {
-	return mStg.backup.CheckBackupStatus()
-}
-
-func (mStg *BackupSupportStorage) ReadMemStorageFields() (g map[string]float64, c map[string]int) {
-	gaugeOut := make(map[string]float64)
-	counterOut := make(map[string]int)
-
-	mStg.mtx.Lock()
-	defer mStg.mtx.Unlock()
-	for k, v := range mStg.gauge {
-		gaugeOut[k] = v
-	}
-
-	for k, v := range mStg.counter {
-		counterOut[k] = v
-	}
-
-	return gaugeOut, counterOut
+	log    logger.Recorder
+	backup backup.MetricsBackup
+	MemStorage
 }
 
 func NewBackupSupportStorage(restore bool, backup backup.MetricsBackup, log logger.Recorder) MetricsRepository {
@@ -54,6 +26,10 @@ func NewBackupSupportStorage(restore bool, backup backup.MetricsBackup, log logg
 		mStg.RestoreDataFromBackup()
 	}
 	return mStg
+}
+
+func (mStg *BackupSupportStorage) IsValid() bool {
+	return mStg.backup != nil && mStg.log != nil && mStg.gauge != nil && mStg.counter != nil
 }
 
 func (mStg *BackupSupportStorage) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) error {
@@ -105,28 +81,6 @@ func (mStg *BackupSupportStorage) UpdateMetricByName(oper constants.UpdateOperat
 	}
 
 	return err
-}
-
-func (mStg *BackupSupportStorage) GetMetricByName(mType constants.MetricType, mName string) (float64, error) {
-	mStg.mtx.Lock()
-	defer mStg.mtx.Unlock()
-
-	switch mType {
-	case constants.GaugeType:
-		gMetric, wasFound := mStg.gauge[mName]
-		if !wasFound {
-			return 0.0, errors.New("value was not found")
-		}
-		return gMetric, nil
-	case constants.CounterType:
-		cMetric, wasFound := mStg.counter[mName]
-		if !wasFound {
-			return 0.0, errors.New("value was not found")
-		}
-		return float64(cMetric), nil
-	default:
-		return 0.0, errors.New("value was not found")
-	}
 }
 
 func (mStg *BackupSupportStorage) RestoreDataFromBackup() {

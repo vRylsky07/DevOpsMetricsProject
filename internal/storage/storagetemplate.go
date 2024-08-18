@@ -10,5 +10,4 @@ type MetricsRepository interface {
 	UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) error
 	GetMetricByName(mType constants.MetricType, mName string) (float64, error)
 	IsValid() bool
-	CheckBackupStatus() error
 }

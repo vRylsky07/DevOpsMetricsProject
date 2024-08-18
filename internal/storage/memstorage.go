@@ -12,12 +12,12 @@ type MemStorage struct {
 	mtx     sync.Mutex
 }
 
-func (mStg *MemStorage) IsValid() bool {
-	return mStg.gauge != nil && mStg.counter != nil
+func NewMemStorage() MetricsRepository {
+	return &MemStorage{gauge: map[string]float64{}, counter: map[string]int{}}
 }
 
-func (mStg *MemStorage) CheckBackupStatus() error {
-	return nil
+func (mStg *MemStorage) IsValid() bool {
+	return mStg.gauge != nil && mStg.counter != nil
 }
 
 func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[string]int) {
@@ -35,10 +35,6 @@ func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[stri
 	}
 
 	return gaugeOut, counterOut
-}
-
-func NewMemStorage() MetricsRepository {
-	return &MemStorage{gauge: map[string]float64{}, counter: map[string]int{}}
 }
 
 func (mStg *MemStorage) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) error {

@@ -179,7 +179,6 @@ func (serv *dompserver) MetricHandlerJSON(res http.ResponseWriter, req *http.Req
 	mType := funcslib.ConvertStringToMetricType(mReceiver.MType)
 
 	if isUpdate {
-		mType := funcslib.ConvertStringToMetricType(mReceiver.MType)
 		switch mType {
 		case constants.GaugeType:
 			if (*mReceiver).Value != nil {
@@ -250,8 +249,11 @@ func (serv *dompserver) UpdateBatchHandler(res http.ResponseWriter, req *http.Re
 }
 
 func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, _ *http.Request) {
+	if serv.cfg.SaveMode != constants.DatabaseMode || serv.pinger == nil {
+		return
+	}
 
-	if err := serv.coreStg.CheckBackupStatus(); err != nil {
+	if err := serv.pinger.PingDB(); err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}

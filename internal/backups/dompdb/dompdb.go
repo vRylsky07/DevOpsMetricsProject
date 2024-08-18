@@ -20,7 +20,7 @@ type DompDB struct {
 	mtx sync.Mutex
 }
 
-func (d *DompDB) CheckBackupStatus() error {
+func (d *DompDB) PingDB() error {
 	return d.db.PingContext(context.TODO())
 }
 

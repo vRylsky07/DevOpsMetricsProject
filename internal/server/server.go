@@ -20,10 +20,17 @@ type dompserver struct {
 	coreStg storage.MetricsRepository
 	cfg     *configs.ServerConfig
 	log     logger.Recorder
+	pinger  backup.PingerDB
 }
 
 func (serv *dompserver) IsValid() bool {
-	return serv.coreMux != nil || serv.coreStg.IsValid() || serv.cfg != nil || serv.log != nil
+	b := serv.coreMux != nil || serv.coreStg.IsValid() || serv.cfg != nil || serv.log != nil
+
+	if serv.cfg.SaveMode == constants.DatabaseMode {
+		return b && serv.pinger != nil
+	}
+
+	return b
 }
 
 func Start() {
@@ -82,35 +89,35 @@ func NewDompServer(cfg *configs.ServerConfig) (*dompserver, error) {
 		errs = append(errs, errLog)
 	}
 
-	mode := ""
 	switch cfg.SaveMode {
 	case constants.DatabaseMode:
-		mode = "IS DATABASE MODE"
+		logger.Info("Backup save mode: Database")
 	case constants.FileMode:
-		mode = "IS FILE MODE"
+		logger.Info("Backup save mode: File")
 	case constants.InMemoryMode:
-		mode = "IS MEMORY MODE"
+		logger.Info("Backup save mode: In memory")
 	}
-	logger.Info(mode)
-	coreMux := chi.NewRouter()
 
+	coreMux := chi.NewRouter()
 	var coreStg storage.MetricsRepository
-	var backup backup.MetricsBackup
+	var backuper backup.MetricsBackup
 	var bckErr error
+	var pinger backup.PingerDB
 
 	switch cfg.SaveMode {
 	case constants.DatabaseMode:
-		backup, bckErr = dompdb.NewDompDB(cfg.DatabaseDSN, logger)
+		backuper, bckErr = dompdb.NewDompDB(cfg.DatabaseDSN, logger)
 		if bckErr != nil {
 			errs = append(errs, bckErr)
 		}
-		coreStg = storage.NewBackupSupportStorage(cfg.RestoreBool, backup, logger)
+		pinger = backuper.(backup.PingerDB)
+		coreStg = storage.NewBackupSupportStorage(cfg.RestoreBool, backuper, logger)
 	case constants.FileMode:
-		backup, bckErr = filesbackup.NewMetricsBackup(cfg, logger)
+		backuper, bckErr = filesbackup.NewMetricsBackup(cfg, logger)
 		if bckErr != nil {
 			errs = append(errs, bckErr)
 		}
-		coreStg = storage.NewBackupSupportStorage(cfg.RestoreBool, backup, logger)
+		coreStg = storage.NewBackupSupportStorage(cfg.RestoreBool, backuper, logger)
 	case constants.InMemoryMode:
 		coreStg = storage.NewMemStorage()
 	}
@@ -120,6 +127,7 @@ func NewDompServer(cfg *configs.ServerConfig) (*dompserver, error) {
 		coreStg: coreStg,
 		cfg:     cfg,
 		log:     logger,
+		pinger:  pinger,
 	}
 
 	return serv, errors.Join(errs...)

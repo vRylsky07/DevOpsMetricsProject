@@ -27,10 +27,6 @@ func (fb *FilesBackup) IsValid() bool {
 	return fb.storeInterval >= 0 && fb.currentMetrics != nil && fb.log != nil
 }
 
-func (fb *FilesBackup) CheckBackupStatus() error {
-	return nil
-}
-
 func NewMetricsBackup(cfg *configs.ServerConfig, log logger.Recorder) (backup.MetricsBackup, error) {
 	CreateMetricsSave(cfg.RestoreBool, log)
 	tFile := CreateTempFile(cfg.TempFile, log)
