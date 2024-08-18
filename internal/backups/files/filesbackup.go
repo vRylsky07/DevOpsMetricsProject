@@ -19,13 +19,12 @@ import (
 
 type FilesBackup struct {
 	currentMetrics *os.File
-	savefile       *os.File
 	storeInterval  int
 	log            logger.Recorder
 }
 
 func (fb *FilesBackup) IsValid() bool {
-	return fb.storeInterval >= 0 && fb.currentMetrics != nil && fb.savefile != nil && fb.log != nil
+	return fb.storeInterval >= 0 && fb.currentMetrics != nil && fb.log != nil
 }
 
 func (fb *FilesBackup) CheckBackupStatus() error {
@@ -33,10 +32,9 @@ func (fb *FilesBackup) CheckBackupStatus() error {
 }
 
 func NewMetricsBackup(cfg *configs.ServerConfig, log logger.Recorder) (backup.MetricsBackup, error) {
+	CreateMetricsSave(cfg.RestoreBool, log)
 	tFile := CreateTempFile(cfg.TempFile, log)
-	sFile := CreateMetricsSave(cfg.RestoreBool, log)
-
-	fBack := &FilesBackup{currentMetrics: tFile, savefile: sFile, storeInterval: cfg.StoreInterval, log: log}
+	fBack := &FilesBackup{currentMetrics: tFile, storeInterval: cfg.StoreInterval, log: log}
 
 	if !fBack.IsValid() {
 		err := errors.New("creating new metrics backup failed")
@@ -72,7 +70,12 @@ func (fb *FilesBackup) UpdateMetricDB(mType constants.MetricType, mName string, 
 	var err error
 	switch fb.storeInterval {
 	case 0:
-		err = ReplaceOrAddRowToFile(mType, mName, mValue, fb.savefile, fb.log)
+		file, errOpen := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR, 0666)
+		if errOpen != nil {
+			return errOpen
+		}
+		defer file.Close()
+		err = ReplaceOrAddRowToFile(mType, mName, mValue, file, fb.log)
 	default:
 		err = ReplaceOrAddRowToFile(mType, mName, mValue, fb.currentMetrics, fb.log)
 	}
@@ -101,12 +104,14 @@ func (fb *FilesBackup) TransferMetricsToFile() error {
 		return errRead
 	}
 
-	savefile, errSf := os.OpenFile(fb.savefile.Name(), os.O_RDWR, 0666)
+	savefile, errSf := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR, 0666)
 
 	if errSf != nil {
 		fb.log.Error(errSf.Error())
 		return errSf
 	}
+
+	defer savefile.Close()
 
 	errTrun := savefile.Truncate(0)
 	if errTrun != nil {
@@ -154,7 +159,6 @@ func (fb *FilesBackup) GetAllData() (*map[string]float64, *map[string]int) {
 	c := make(map[string]int)
 
 	for scanner.Scan() {
-		fb.log.Info("WTF: " + scanner.Text())
 		line := io.NopCloser(strings.NewReader(string(scanner.Bytes())))
 
 		metricStruct, err := funcslib.DecodeMetricJSON(line)
@@ -231,17 +235,15 @@ func CreateTempFile(filename string, log logger.Recorder) *os.File {
 	return tFile
 }
 
-func CreateMetricsSave(restore bool, log logger.Recorder) *os.File {
+func CreateMetricsSave(restore bool, log logger.Recorder) {
+	if !restore {
+		return
+	}
 
-	if restore {
-		file, err := os.OpenFile(GetMetricsSaveFilePath(), os.O_RDWR|os.O_CREATE, 0666)
+	_, errStat := os.Stat(GetMetricsSaveFilePath())
 
-		if err != nil {
-			log.Error(err.Error())
-			return nil
-		}
-		//defer file.Close()
-		return file
+	if errStat == nil {
+		return
 	}
 
 	dir := filepath.Join(".", "saved")
@@ -249,17 +251,16 @@ func CreateMetricsSave(restore bool, log logger.Recorder) *os.File {
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
 		log.Error(err.Error())
-		return nil
+		return
 	}
 
-	file, errCreate := os.Create(GetMetricsSaveFilePath())
+	_, errCreate := os.Create(GetMetricsSaveFilePath())
 	if errCreate != nil {
 		log.Error(errCreate.Error())
-		return nil
+		return
 	}
 
 	log.Info("New savefile was created")
-	return file
 }
 
 func ReplaceOrAddRowToFile(mType constants.MetricType, mName string, mValue float64, file *os.File, log logger.Recorder) error {
