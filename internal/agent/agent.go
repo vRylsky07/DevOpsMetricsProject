@@ -2,21 +2,22 @@ package agent
 
 import (
 	"DevOpsMetricsProject/internal/configs"
-	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/sender"
 	"sync"
 )
 
 func Start() {
 	cfg := configs.CreateClientConfig()
-	logger.Initialize(cfg.Loglevel, "agent_")
+	mSender, err := sender.CreateSender(cfg)
 
-	mSender := sender.CreateSender(cfg)
+	if err != nil {
+		panic(err)
+	}
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go mSender.UpdateMetrics()
 	go mSender.SendMetricsHTTP()
-	logger.Log.Info("Agent was successfully started!")
+	mSender.GetLogger().Info("Agent was successfully started!")
 	wg.Wait()
 }

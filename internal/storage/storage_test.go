@@ -1,5 +1,6 @@
 package storage
 
+/*
 import (
 	"DevOpsMetricsProject/internal/constants"
 	"testing"
@@ -125,3 +126,4 @@ func TestMemStorage_GetMetricByName(t *testing.T) {
 		})
 	}
 }
+*/

@@ -1,63 +1,69 @@
 package server
 
 import (
+	backup "DevOpsMetricsProject/internal/backups"
+	"DevOpsMetricsProject/internal/backups/dompdb"
+	filesbackup "DevOpsMetricsProject/internal/backups/files"
 	"DevOpsMetricsProject/internal/configs"
+	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
+	"errors"
 	"net/http"
-	"os"
 
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type dompserver struct {
-	coreMux        *chi.Mux
-	coreStg        storage.StorageInterface
-	currentMetrics *os.File
-	cfg            *configs.ServerConfig
-	savefile       *MetricsSave
+	coreMux *chi.Mux
+	coreStg storage.MetricsRepository
+	cfg     *configs.ServerConfig
+	log     logger.Recorder
+	pinger  backup.PingerDB
 }
 
 func (serv *dompserver) IsValid() bool {
-	if serv.coreMux != nil || serv.coreStg != nil || serv.currentMetrics != nil || serv.cfg != nil || serv.savefile != nil || serv.savefile.IsValid() {
-		return true
+	b := serv.coreMux != nil || serv.coreStg.IsValid() || serv.cfg != nil || serv.log != nil
+
+	if serv.cfg.SaveMode == constants.DatabaseMode {
+		return b && serv.pinger != nil
 	}
-	logger.Log.Error("DOMP Server is not valid")
-	return false
+
+	return b
 }
 
 func Start() {
-	dompserv := CreateNewServer(configs.CreateServerConfig())
-	dompserv.StartSaveMetricsThread()
-	if !dompserv.IsValid() {
-		logger.Log.Info(
-			"Server initialization failed!  ",
-			zap.Bool("coreMux is nil?", (dompserv.coreMux == nil)),
-			zap.Bool("coreStg is nil?", (dompserv.coreStg == nil)),
-			zap.Bool("currentMetrics is nil?", (dompserv.currentMetrics == nil)),
-			zap.Bool("cfg is nil?", (dompserv.cfg == nil)),
-			zap.Bool("savefile is not valid?", (!dompserv.savefile.IsValid())),
-		)
-		return
+	dompserv, err := CreateNewServer(configs.CreateServerConfig())
+
+	if err != nil {
+		panic(err)
 	}
-	logger.Log.Info("Server was successfully initialized!")
-	err := http.ListenAndServe(dompserv.cfg.Address, dompserv.coreMux)
+
+	dompserv.log.Info("Server was successfully initialized!")
+
+	err = http.ListenAndServe(dompserv.cfg.Address, dompserv.coreMux)
+
 	if err != nil {
 		panic(err)
 	}
 
 }
 
-func CreateNewServer(cfg *configs.ServerConfig) *dompserver {
-	dompserv := NewDompServer(cfg)
+func CreateNewServer(cfg *configs.ServerConfig) (*dompserver, error) {
+	dompserv, err := NewDompServer(cfg)
+
+	if !dompserv.IsValid() {
+		return nil, err
+	}
 
 	dompserv.coreMux.Use(dompserv.WithResponseLog)
 	dompserv.coreMux.Use(dompserv.WithRequestLog)
-	dompserv.coreMux.Use(gzipHandle)
-	dompserv.coreMux.Use(DecompressHandler)
+	dompserv.coreMux.Use(dompserv.gzipHandle)
+	dompserv.coreMux.Use(dompserv.DecompressHandler)
 
 	dompserv.coreMux.Get("/", dompserv.GetMainPageHandler)
+	dompserv.coreMux.Get("/ping", dompserv.PingDatabaseHandler)
 	dompserv.coreMux.Route("/update", func(r chi.Router) {
 		r.Post("/", dompserv.MetricHandlerJSON)
 		r.Get("/", dompserv.IncorrectRequestHandler)
@@ -68,21 +74,61 @@ func CreateNewServer(cfg *configs.ServerConfig) *dompserver {
 		r.Post("/", dompserv.MetricHandlerJSON)
 		r.Get("/{mType}/{mName}", dompserv.GetMetricHandler)
 	})
-	return dompserv
+	dompserv.coreMux.Route("/updates", func(r chi.Router) {
+		r.Post("/", dompserv.UpdateBatchHandler)
+	})
+	return dompserv, nil
 }
 
-func NewDompServer(cfg *configs.ServerConfig) *dompserver {
+func NewDompServer(cfg *configs.ServerConfig) (*dompserver, error) {
+	var errs []error
+
+	logger, errLog := logger.Initialize(cfg.Loglevel, "server_")
+
+	if errLog != nil {
+		errs = append(errs, errLog)
+	}
+
+	switch cfg.SaveMode {
+	case constants.DatabaseMode:
+		logger.Info("Backup save mode: Database")
+	case constants.FileMode:
+		logger.Info("Backup save mode: File")
+	case constants.InMemoryMode:
+		logger.Info("Backup save mode: In memory")
+	}
+
 	coreMux := chi.NewRouter()
-	coreStg := &storage.MemStorage{}
-	coreStg.InitMemStorage()
-	logger.Initialize(cfg.Loglevel, "server_")
+	var coreStg storage.MetricsRepository
+	var backuper backup.MetricsBackup
+	var bckErr error
+	var pinger backup.PingerDB
+
+	switch cfg.SaveMode {
+	case constants.DatabaseMode:
+		backuper, bckErr = dompdb.NewDompDB(cfg.DatabaseDSN, logger)
+		if bckErr != nil {
+			errs = append(errs, bckErr)
+		}
+		pinger = backuper.(backup.PingerDB)
+		coreStg = storage.NewBackupSupportStorage(cfg.RestoreBool, backuper, logger)
+	case constants.FileMode:
+		backuper, bckErr = filesbackup.NewMetricsBackup(cfg, logger)
+		if bckErr != nil {
+			errs = append(errs, bckErr)
+		}
+		coreStg = storage.NewBackupSupportStorage(cfg.RestoreBool, backuper, logger)
+	case constants.InMemoryMode:
+		coreStg = storage.NewMemStorage()
+	}
 
 	serv := &dompserver{
-		coreMux:        coreMux,
-		coreStg:        coreStg,
-		currentMetrics: CreateTempFile(cfg.TempFile, cfg.RestoreBool),
-		cfg:            cfg,
-		savefile:       RestoreData(cfg, coreStg),
+		coreMux: coreMux,
+		coreStg: coreStg,
+		cfg:     cfg,
+		log:     logger,
+		pinger:  pinger,
 	}
-	return serv
+
+	return serv, errors.Join(errs...)
 }

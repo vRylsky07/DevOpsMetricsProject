@@ -6,45 +6,38 @@ import (
 	"sync"
 )
 
-//go:generate mockgen -source=storage.go -destination=mocks/storage_mocks.go
-type StorageInterface interface {
-	InitMemStorage()
-	ReadMemStorageFields() (g map[string]float64, c map[string]int)
-	UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64)
-	GetMetricByName(mType constants.MetricType, mName string) (float64, error)
-}
-
 type MemStorage struct {
 	gauge   map[string]float64
 	counter map[string]int
 	mtx     sync.Mutex
 }
 
+func NewMemStorage() MetricsRepository {
+	return &MemStorage{gauge: map[string]float64{}, counter: map[string]int{}}
+}
+
+func (mStg *MemStorage) IsValid() bool {
+	return mStg.gauge != nil && mStg.counter != nil
+}
+
 func (mStg *MemStorage) ReadMemStorageFields() (g map[string]float64, c map[string]int) {
 	gaugeOut := make(map[string]float64)
-
-	mStg.mtx.Lock()
-	for k, v := range mStg.gauge {
-		gaugeOut[k] = v
-	}
-	mStg.mtx.Unlock()
-
 	counterOut := make(map[string]int)
 
 	mStg.mtx.Lock()
+	defer mStg.mtx.Unlock()
+	for k, v := range mStg.gauge {
+		gaugeOut[k] = v
+	}
+
 	for k, v := range mStg.counter {
 		counterOut[k] = v
 	}
-	mStg.mtx.Unlock()
 
 	return gaugeOut, counterOut
 }
 
-func (mStg *MemStorage) InitMemStorage() {
-	mStg.gauge, mStg.counter = map[string]float64{}, map[string]int{}
-}
-
-func (mStg *MemStorage) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) {
+func (mStg *MemStorage) UpdateMetricByName(oper constants.UpdateOperation, mType constants.MetricType, mName string, mValue float64) error {
 
 	mStg.mtx.Lock()
 	defer mStg.mtx.Unlock()
@@ -61,6 +54,8 @@ func (mStg *MemStorage) UpdateMetricByName(oper constants.UpdateOperation, mType
 		}
 		mStg.counter[mName] += int(mValue)
 	}
+
+	return nil
 }
 
 func (mStg *MemStorage) GetMetricByName(mType constants.MetricType, mName string) (float64, error) {

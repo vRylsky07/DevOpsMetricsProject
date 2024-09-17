@@ -3,56 +3,55 @@ package sender
 import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
-	"DevOpsMetricsProject/internal/functionslibrary"
+	"DevOpsMetricsProject/internal/funcslib"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
 	"runtime"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 //go:generate mockgen -source=sender.go -destination=mocks/sender_mocks.go
-type SenderInterface interface {
+type MetricsProvider interface {
 	SendMetricsHTTP(reportInterval int)
-	GetStorage() storage.StorageInterface
+	GetStorage() storage.MetricsRepository
 	CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string
 }
 
 type dompsender struct {
-	senderMemStorage storage.StorageInterface
+	senderMemStorage storage.MetricsRepository
 	stopThread       bool
 	cfg              *configs.ClientConfig
+	log              logger.Recorder
+}
+
+func (sStg *dompsender) GetLogger() logger.Recorder {
+	return sStg.log
 }
 
 func (sStg *dompsender) IsValid() bool {
 	if sStg != nil && sStg.senderMemStorage != nil && sStg.cfg != nil {
 		return true
 	}
-	logger.Log.Error("Sender Storage is not valid")
+	sStg.log.Error("Sender Storage is not valid")
 	return false
 }
 
-func (sStg *dompsender) GetStorage() storage.StorageInterface {
+func (sStg *dompsender) GetStorage() storage.MetricsRepository {
 	if !sStg.IsValid() {
 		return nil
 	}
 	return sStg.senderMemStorage
 }
 
-func (sStg *dompsender) InitSenderStorage(cfg *configs.ClientConfig, newStg storage.StorageInterface) {
-	sStg.senderMemStorage = newStg
-	sStg.cfg = cfg
-}
-
 func (sStg *dompsender) UpdateMetrics() {
-	if !sStg.IsValid() {
+	if !sStg.IsValid() || sStg.GetStorage() == nil {
 		return
-	}
-
-	if sStg.GetStorage() == nil {
-		sStg.GetStorage().InitMemStorage()
 	}
 
 	var ticker *time.Ticker
@@ -82,14 +81,12 @@ func (sStg *dompsender) SendMetricsHTTP() []error {
 		return []error{errors.New("sender Storage is not valid")}
 	}
 
-	interval := sStg.cfg.ReportInterval
-
 	var catchErrs []error
 
 	var ticker *time.Ticker
 
-	if interval >= 0 {
-		ticker = time.NewTicker(time.Duration(interval) * time.Second)
+	if sStg.cfg.ReportInterval >= 0 {
+		ticker = time.NewTicker(time.Duration(sStg.cfg.ReportInterval) * time.Second)
 		defer ticker.Stop()
 	}
 
@@ -99,21 +96,9 @@ func (sStg *dompsender) SendMetricsHTTP() []error {
 			<-ticker.C
 		}
 
-		if sStg == nil {
-			catchErrs = append(catchErrs, errors.New("SendMetricsHTTP() FAILED! Storage of sender module is equal nil"))
-			return catchErrs
-		}
+		sStg.ManageRequests(&catchErrs, ticker)
 
-		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
-
-		for nameGauge, valueGauge := range gauge {
-			sStg.postRequestByMetricType(true, constants.GaugeType, nameGauge, valueGauge, &catchErrs)
-		}
-
-		for nameCounter, valueCounter := range counter {
-			sStg.postRequestByMetricType(true, constants.CounterType, nameCounter, float64(valueCounter), &catchErrs)
-		}
-		if interval == -1 {
+		if sStg.cfg.ReportInterval == -1 {
 			return catchErrs
 		}
 	}
@@ -127,41 +112,36 @@ func (sStg *dompsender) StopAgentProcessing() {
 	sStg.stopThread = true
 }
 
-func CreateSender(cfg *configs.ClientConfig) *dompsender {
-	senderStorage := storage.MemStorage{}
-	senderStorage.InitMemStorage()
+func CreateSender(cfg *configs.ClientConfig) (*dompsender, error) {
+	senderStorage := storage.NewMemStorage()
 
-	mSender := &dompsender{}
-	mSender.InitSenderStorage(cfg, &senderStorage)
+	log, err := logger.Initialize(cfg.Loglevel, "agent_")
 
-	return mSender
+	if err != nil {
+		return nil, err
+	}
+
+	mSender := &dompsender{senderMemStorage: senderStorage, cfg: cfg, log: log}
+	return mSender, nil
 }
 
 func (sStg *dompsender) updateCounterMetrics() {
-	if !sStg.IsValid() {
+	if !sStg.IsValid() || sStg.GetStorage() == nil {
 		return
-	}
-
-	if sStg.GetStorage() == nil {
-		sStg.GetStorage().InitMemStorage()
 	}
 
 	sStg.GetStorage().UpdateMetricByName(constants.AddOperation, constants.CounterType, "PollCount", 1)
 }
 
 func (sStg *dompsender) updateGaugeMetrics() {
-	if !sStg.IsValid() {
+	if !sStg.IsValid() || sStg.GetStorage() == nil {
 		return
-	}
-
-	if sStg.GetStorage() == nil {
-		sStg.GetStorage().InitMemStorage()
 	}
 
 	mFromRuntime := &runtime.MemStats{}
 	runtime.ReadMemStats(mFromRuntime)
 
-	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "RandomValue", functionslibrary.GenerateRandomValue(-10000, 10000, 3))
+	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "RandomValue", funcslib.GenerateRandomValue(-10000, 10000, 3))
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "Alloc", float64(mFromRuntime.Alloc))
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "BuckHashSys", float64(mFromRuntime.BuckHashSys))
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "Frees", float64(mFromRuntime.Frees))
@@ -191,26 +171,36 @@ func (sStg *dompsender) updateGaugeMetrics() {
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "TotalAlloc", float64(mFromRuntime.TotalAlloc))
 }
 
-func (sStg *dompsender) postRequestByMetricType(compress bool, mType constants.MetricType, mName string, mValue float64, catchErrs *[]error) {
+func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName string, mJSON *bytes.Buffer, encErr error, catchErrs *[]error) {
+	if ticker != nil {
+		ticker.Stop()
+		defer ticker.Reset(time.Duration(sStg.cfg.ReportInterval) * time.Second)
+	}
 
 	if !sStg.IsValid() {
 		return
 	}
 
-	sendURL := "http://" + sStg.cfg.Address + "/update/"
-
-	mJSON, jsonErr := functionslibrary.EncodeMetricJSON(mType, mName, mValue)
-
-	if jsonErr != nil {
-		*catchErrs = append(*catchErrs, jsonErr)
-		logger.Log.Error(jsonErr.Error())
+	if encErr != nil {
+		sStg.log.Error(encErr.Error())
+		*catchErrs = append(*catchErrs, encErr)
 		return
 	}
 
-	if compress {
-		zipped, compErr := functionslibrary.CompressData(mJSON.Bytes())
+	batchStr := ""
+
+	if sStg.cfg.UseBatches {
+		batchStr = "s"
+	}
+
+	sendURL := "http://" + sStg.cfg.Address + "/update" + batchStr + "/"
+
+	if sStg.cfg.CompressData {
+		zipped, compErr := funcslib.CompressData(mJSON.Bytes())
 		if compErr == nil {
 			mJSON = zipped
+		} else {
+			sStg.log.Error(compErr.Error())
 		}
 	}
 
@@ -219,30 +209,69 @@ func (sStg *dompsender) postRequestByMetricType(compress bool, mType constants.M
 	req, errReq := http.NewRequest("POST", sendURL, mJSON)
 
 	if errReq != nil {
-		logger.Log.Error(errReq.Error())
+		sStg.log.Error(errReq.Error())
 		return
 	}
 
 	req.Header.Add("Content-Type", "application/json")
 
-	if compress {
+	if sStg.cfg.CompressData {
 		req.Header.Add("Content-Encoding", "gzip ")
 	}
 
-	resp, errDo := client.Do(req)
+	var resp *http.Response
+	var errDo error
+
+	for _, v := range *constants.GetRetryIntervals() {
+		if v != 0 {
+			sStg.log.Info("Server is not responding. Retry to do post request...")
+			timer := time.NewTimer(time.Duration(v) * time.Second)
+			<-timer.C
+		}
+		resp, errDo = client.Do(req)
+
+		if errDo == nil {
+			defer resp.Body.Close()
+			break
+		}
+	}
 
 	if errDo != nil {
 		errStr := "Server is not responding. URL to send was: " + sendURL
 		*catchErrs = append(*catchErrs, errors.New(errStr))
-		logger.Log.Error(errStr)
+		sStg.log.Error(errStr)
 		return
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Log.Info(fmt.Sprintf(`Metric %s update failed! Status code: %d`, mName, resp.StatusCode))
+		sStg.log.Info(fmt.Sprintf(`Metrics update failed! Status code: %d`, resp.StatusCode))
 		return
 	}
 
-	logger.Log.Info(fmt.Sprintf(`Metric %s update was successful! Status code: %d`, mName, resp.StatusCode))
+	sStg.log.Info(fmt.Sprintf(`Metric%s update was successful! Status code: %d`, batchStr, resp.StatusCode), zap.String("MetricName", mName))
+}
+
+func (sStg *dompsender) ManageRequests(catchErrs *[]error, ticker *time.Ticker) {
+	var mJSON *bytes.Buffer
+	var errJSON error
+
+	switch sStg.cfg.UseBatches {
+	case true:
+		g, c := sStg.GetStorage().ReadMemStorageFields()
+		mJSON, errJSON = funcslib.EncodeBatchJSON(&g, &c)
+		sStg.postRequestByMetricType(ticker, "batch", mJSON, errJSON, catchErrs)
+	case false:
+
+		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
+
+		for nameGauge, valueGauge := range gauge {
+			mJSON, errJSON = funcslib.EncodeMetricJSON(constants.GaugeType, nameGauge, valueGauge)
+			sStg.postRequestByMetricType(ticker, nameGauge, mJSON, errJSON, catchErrs)
+		}
+
+		for nameCounter, valueCounter := range counter {
+			mJSON, errJSON = funcslib.EncodeMetricJSON(constants.CounterType, nameCounter, float64(valueCounter))
+			sStg.postRequestByMetricType(ticker, nameCounter, mJSON, errJSON, catchErrs)
+		}
+	}
 }

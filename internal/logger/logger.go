@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type LoggerInterface interface {
+type Recorder interface {
 	Error(msg string, fields ...interface{})
 	ErrorHTTP(w http.ResponseWriter, err error, code int)
 	Info(msg string, fields ...interface{})
@@ -64,15 +64,13 @@ func (dl *dompLogZap) ErrorHTTP(w http.ResponseWriter, err error, code int) {
 	dl.Error(err.Error())
 }
 
-var Log LoggerInterface = &dompLogZap{zap.NewNop()}
-
-func Initialize(level string, filePrefix string) error {
+func Initialize(level string, filePrefix string) (Recorder, error) {
 
 	var initLog *dompLogZap
 
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	cfg := zap.NewDevelopmentConfig()
@@ -87,15 +85,15 @@ func Initialize(level string, filePrefix string) error {
 
 	zl, err := cfg.Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	initLog = &dompLogZap{zl}
 
 	zapLogger := zap.Must(initLog.Logger, err)
 
-	Log = &dompLogZap{zapLogger}
-
+	Log := &dompLogZap{zapLogger}
 	Log.Info("The Logger was successfully initialized")
-	return nil
+
+	return Log, nil
 }

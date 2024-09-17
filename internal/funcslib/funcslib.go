@@ -1,15 +1,12 @@
-package functionslibrary
+package funcslib
 
 import (
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/coretypes"
-	"DevOpsMetricsProject/internal/logger"
-	"DevOpsMetricsProject/internal/storage"
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"math/rand"
 	"strings"
@@ -54,6 +51,7 @@ func ConvertMetricTypeToString(mType constants.MetricType) string {
 }
 
 func EncodeMetricJSON(mType constants.MetricType, mName string, mValue float64) (*bytes.Buffer, error) {
+
 	src := coretypes.Metrics{}
 
 	src.ID = mName
@@ -77,6 +75,53 @@ func EncodeMetricJSON(mType constants.MetricType, mName string, mValue float64) 
 
 func DecodeMetricJSON(req io.ReadCloser) (*coretypes.Metrics, error) {
 	var mReceiver coretypes.Metrics
+	err := json.NewDecoder(req).Decode(&mReceiver)
+	return &mReceiver, err
+}
+
+func EncodeBatchJSON(gauge *map[string]float64, counter *map[string]int) (*bytes.Buffer, error) {
+
+	if gauge == nil || counter == nil {
+		return nil, errors.New("EncodeBatchJSON() failed. One of two maps is empty")
+	}
+
+	length := len(*gauge) + len(*counter)
+
+	mArray := make([]coretypes.Metrics, length)
+
+	i := 0
+
+	for k, v := range *gauge {
+		if i == length {
+			break
+		}
+		storeValue := v
+		mArray[i] = coretypes.Metrics{ID: k, MType: "gauge", Value: &storeValue}
+		i++
+	}
+
+	for k, v := range *counter {
+		if i == length {
+			break
+		}
+		delta := int64(v)
+		mArray[i] = coretypes.Metrics{ID: k, MType: "counter", Delta: &delta}
+		i++
+	}
+
+	var jsonOut bytes.Buffer
+	jsonEncoder := json.NewEncoder(&jsonOut)
+	err := jsonEncoder.Encode(mArray)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &jsonOut, err
+}
+
+func DecodeBatchJSON(req io.ReadCloser) (*[]coretypes.Metrics, error) {
+	var mReceiver []coretypes.Metrics
 	err := json.NewDecoder(req).Decode(&mReceiver)
 	return &mReceiver, err
 }
@@ -108,7 +153,6 @@ func CompressData(data []byte) (*bytes.Buffer, error) {
 func DecompressData(body io.ReadCloser) (io.ReadCloser, error) {
 	gz, err := gzip.NewReader(body)
 	if err != nil {
-		logger.Log.Info("gzip.NewReader failed")
 		return nil, err
 	}
 
@@ -116,7 +160,6 @@ func DecompressData(body io.ReadCloser) (io.ReadCloser, error) {
 
 	decomp, decompErr := io.ReadAll(gz)
 	if decompErr != nil {
-		logger.Log.Info("Decompressiong ReadAll failed")
 		return nil, decompErr
 	}
 
@@ -124,26 +167,4 @@ func DecompressData(body io.ReadCloser) (io.ReadCloser, error) {
 	newReadCloser := io.NopCloser(newReader)
 
 	return newReadCloser, nil
-}
-
-func UpdateStorageInterfaceByMetricStruct(sStg storage.StorageInterface, mType constants.MetricType, mReceiver *coretypes.Metrics) error {
-	switch mType {
-	case constants.GaugeType:
-		if mReceiver.Value == nil {
-			return fmt.Errorf("updating gauge value pointer is nil, ID=%s", mReceiver.ID)
-		}
-		sStg.UpdateMetricByName(constants.RenewOperation, mType, mReceiver.ID, *mReceiver.Value)
-		return nil
-
-	case constants.CounterType:
-		if mReceiver.Delta == nil {
-			return fmt.Errorf("updating counter value pointer is nil, ID=%s", mReceiver.ID)
-		}
-		sStg.UpdateMetricByName(constants.AddOperation, mType, mReceiver.ID, float64(*mReceiver.Delta))
-		return nil
-
-	default:
-		convertErr := "ConvertStringToMetricType returns NoneType"
-		return errors.New(convertErr)
-	}
 }

@@ -12,31 +12,31 @@ import (
 	gomock "github.com/golang/mock/gomock"
 )
 
-// MockSenderInterface is a mock of SenderInterface interface.
-type MockSenderInterface struct {
+// MockMetricsProvider is a mock of MetricsProvider interface.
+type MockMetricsProvider struct {
 	ctrl     *gomock.Controller
-	recorder *MockSenderInterfaceMockRecorder
+	recorder *MockMetricsProviderMockRecorder
 }
 
-// MockSenderInterfaceMockRecorder is the mock recorder for MockSenderInterface.
-type MockSenderInterfaceMockRecorder struct {
-	mock *MockSenderInterface
+// MockMetricsProviderMockRecorder is the mock recorder for MockMetricsProvider.
+type MockMetricsProviderMockRecorder struct {
+	mock *MockMetricsProvider
 }
 
-// NewMockSenderInterface creates a new mock instance.
-func NewMockSenderInterface(ctrl *gomock.Controller) *MockSenderInterface {
-	mock := &MockSenderInterface{ctrl: ctrl}
-	mock.recorder = &MockSenderInterfaceMockRecorder{mock}
+// NewMockMetricsProvider creates a new mock instance.
+func NewMockMetricsProvider(ctrl *gomock.Controller) *MockMetricsProvider {
+	mock := &MockMetricsProvider{ctrl: ctrl}
+	mock.recorder = &MockMetricsProviderMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockSenderInterface) EXPECT() *MockSenderInterfaceMockRecorder {
+func (m *MockMetricsProvider) EXPECT() *MockMetricsProviderMockRecorder {
 	return m.recorder
 }
 
 // CreateMetricURL mocks base method.
-func (m *MockSenderInterface) CreateMetricURL(mType constants.MetricType, mainURL, name string, value float64) string {
+func (m *MockMetricsProvider) CreateMetricURL(mType constants.MetricType, mainURL, name string, value float64) string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMetricURL", mType, mainURL, name, value)
 	ret0, _ := ret[0].(string)
@@ -44,33 +44,33 @@ func (m *MockSenderInterface) CreateMetricURL(mType constants.MetricType, mainUR
 }
 
 // CreateMetricURL indicates an expected call of CreateMetricURL.
-func (mr *MockSenderInterfaceMockRecorder) CreateMetricURL(mType, mainURL, name, value interface{}) *gomock.Call {
+func (mr *MockMetricsProviderMockRecorder) CreateMetricURL(mType, mainURL, name, value interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMetricURL", reflect.TypeOf((*MockSenderInterface)(nil).CreateMetricURL), mType, mainURL, name, value)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMetricURL", reflect.TypeOf((*MockMetricsProvider)(nil).CreateMetricURL), mType, mainURL, name, value)
 }
 
 // GetStorage mocks base method.
-func (m *MockSenderInterface) GetStorage() storage.StorageInterface {
+func (m *MockMetricsProvider) GetStorage() storage.MetricsRepository {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetStorage")
-	ret0, _ := ret[0].(storage.StorageInterface)
+	ret0, _ := ret[0].(storage.MetricsRepository)
 	return ret0
 }
 
 // GetStorage indicates an expected call of GetStorage.
-func (mr *MockSenderInterfaceMockRecorder) GetStorage() *gomock.Call {
+func (mr *MockMetricsProviderMockRecorder) GetStorage() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStorage", reflect.TypeOf((*MockSenderInterface)(nil).GetStorage))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStorage", reflect.TypeOf((*MockMetricsProvider)(nil).GetStorage))
 }
 
 // SendMetricsHTTP mocks base method.
-func (m *MockSenderInterface) SendMetricsHTTP(reportInterval int) {
+func (m *MockMetricsProvider) SendMetricsHTTP(reportInterval int) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SendMetricsHTTP", reportInterval)
 }
 
 // SendMetricsHTTP indicates an expected call of SendMetricsHTTP.
-func (mr *MockSenderInterfaceMockRecorder) SendMetricsHTTP(reportInterval interface{}) *gomock.Call {
+func (mr *MockMetricsProviderMockRecorder) SendMetricsHTTP(reportInterval interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMetricsHTTP", reflect.TypeOf((*MockSenderInterface)(nil).SendMetricsHTTP), reportInterval)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMetricsHTTP", reflect.TypeOf((*MockMetricsProvider)(nil).SendMetricsHTTP), reportInterval)
 }
