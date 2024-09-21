@@ -284,7 +284,7 @@ func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, _ *http.Req
 
 // Middlewares
 
-func (serv *dompserver) HashCompareHandler(h http.Handler) http.Handler {
+func (serv *dompserver) HashCompareMiddleware(h http.Handler) http.Handler {
 	if !serv.IsValid() {
 		return h
 	}
@@ -361,7 +361,7 @@ func (serv *dompserver) WithResponseLog(h http.Handler) http.Handler {
 	return http.HandlerFunc(logFn)
 }
 
-func (serv *dompserver) gzipHandle(next http.Handler) http.Handler {
+func (serv *dompserver) GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
@@ -381,7 +381,7 @@ func (serv *dompserver) gzipHandle(next http.Handler) http.Handler {
 	})
 }
 
-func (serv *dompserver) DecompressHandler(next http.Handler) http.Handler {
+func (serv *dompserver) DecompressMiddleware(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {

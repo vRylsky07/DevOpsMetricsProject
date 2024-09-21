@@ -59,9 +59,9 @@ func CreateNewServer(cfg *configs.ServerConfig) (*dompserver, error) {
 
 	dompserv.coreMux.Use(dompserv.WithResponseLog)
 	dompserv.coreMux.Use(dompserv.WithRequestLog)
-	dompserv.coreMux.Use(dompserv.HashCompareHandler)
-	dompserv.coreMux.Use(dompserv.gzipHandle)
-	dompserv.coreMux.Use(dompserv.DecompressHandler)
+	dompserv.coreMux.Use(dompserv.HashCompareMiddleware)
+	dompserv.coreMux.Use(dompserv.GzipMiddleware)
+	dompserv.coreMux.Use(dompserv.DecompressMiddleware)
 
 	dompserv.coreMux.Get("/", dompserv.GetMainPageHandler)
 	dompserv.coreMux.Get("/ping", dompserv.PingDatabaseHandler)
