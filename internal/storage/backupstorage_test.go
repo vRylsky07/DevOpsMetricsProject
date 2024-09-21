@@ -12,9 +12,11 @@ import (
 
 func TestBackupSupportStorage_UpdateMetricByName(t *testing.T) {
 	MockCtrl := gomock.NewController(t)
+	defer MockCtrl.Finish()
 	backuper := backup_mocks.NewMockMetricsBackup(MockCtrl)
 
 	LogsMockCtrl := gomock.NewController(t)
+	defer LogsMockCtrl.Finish()
 	log := logger_mocks.NewMockRecorder(LogsMockCtrl)
 
 	type args struct {

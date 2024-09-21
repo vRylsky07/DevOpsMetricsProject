@@ -91,6 +91,7 @@ func Test_dompsender_UpdateMetrics(t *testing.T) {
 func Test_dompsender_SendMetricsHTTP(t *testing.T) {
 
 	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
 	testingStorage := mock_storage.NewMockMetricsRepository(mockCtrl)
 	sender, err := CreateSender(&configs.ClientConfig{})
 	assert.Nil(t, err)
