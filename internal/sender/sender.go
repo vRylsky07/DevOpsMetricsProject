@@ -195,6 +195,7 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 	}
 
 	sendURL := "http://" + sStg.cfg.Address + "/update" + batchStr + "/"
+	sign := funcslib.MakeSignSHA(mJSON.Bytes(), sStg.cfg.HashKey)
 
 	if sStg.cfg.CompressData {
 		zipped, compErr := funcslib.CompressData(mJSON.Bytes())
@@ -221,7 +222,7 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 	}
 
 	if sStg.cfg.HashKey != "" {
-		req.Header.Add("HashSHA256", hex.EncodeToString(funcslib.MakeSignSHA(mJSON.Bytes(), sStg.cfg.HashKey)))
+		req.Header.Add("HashSHA256", hex.EncodeToString(sign))
 	}
 
 	var resp *http.Response
@@ -239,8 +240,6 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 			defer resp.Body.Close()
 			break
 		}
-
-		sStg.log.Info("WTF: " + errDo.Error())
 	}
 
 	if errDo != nil {
