@@ -56,3 +56,24 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 
 	return w.ResponseWriter.Write(b)
 }
+
+/*
+type ResponseSigner struct {
+	http.ResponseWriter
+}
+
+func (w ResponseSigner) WriteHeader(statusCode int) {
+
+	header := w.Header().Get("Content-Type")
+
+	if w.AllowedTypes != nil && statusCode < 300 {
+		for _, s := range *w.AllowedTypes {
+			if strings.Contains(header, s) {
+				w.Header().Set("Content-Encoding", "gzip")
+			}
+		}
+	}
+
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+*/
