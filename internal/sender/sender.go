@@ -7,6 +7,7 @@ import (
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -219,6 +220,10 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 		req.Header.Add("Content-Encoding", "gzip ")
 	}
 
+	if sStg.cfg.HashKey != "" {
+		req.Header.Add("HashSHA256", hex.EncodeToString(funcslib.MakeSignSHA(mJSON.Bytes(), sStg.cfg.HashKey)))
+	}
+
 	var resp *http.Response
 	var errDo error
 
@@ -234,6 +239,8 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 			defer resp.Body.Close()
 			break
 		}
+
+		sStg.log.Info("WTF: " + errDo.Error())
 	}
 
 	if errDo != nil {

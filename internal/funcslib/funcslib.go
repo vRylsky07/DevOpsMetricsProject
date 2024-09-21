@@ -5,6 +5,8 @@ import (
 	"DevOpsMetricsProject/internal/coretypes"
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"io"
@@ -167,4 +169,14 @@ func DecompressData(body io.ReadCloser) (io.ReadCloser, error) {
 	newReadCloser := io.NopCloser(newReader)
 
 	return newReadCloser, nil
+}
+
+func MakeSignSHA(src []byte, key string) []byte {
+	h := hmac.New(sha256.New, []byte(key))
+	h.Write(src)
+	return h.Sum(nil)
+}
+
+func CompareSigns(sign []byte, body []byte, key string) bool {
+	return string(sign) == string(MakeSignSHA(body, key))
 }
