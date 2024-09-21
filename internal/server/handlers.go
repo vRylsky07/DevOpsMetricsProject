@@ -292,34 +292,50 @@ func (serv *dompserver) HashCompareMiddleware(h http.Handler) http.Handler {
 	hashFn := func(w http.ResponseWriter, r *http.Request) {
 
 		if serv.cfg.HashKey != "" {
-			sign := r.Header.Get("HashSHA256")
-			decodedSign, errDecode := hex.DecodeString(sign)
+			headers := r.Header
 
-			if errDecode != nil {
-				serv.log.ErrorHTTP(w, errors.New("decode sign was failed"), http.StatusNotFound)
-				return
+			isExist := false
+			sign := ""
+
+			for k, v := range headers {
+				if k == "HashSHA256" {
+					isExist = true
+					sign = v[0]
+					break
+				}
 			}
 
-			if sign == "" {
-				serv.log.ErrorHTTP(w, errors.New("request was declined because does not contain sign"), http.StatusBadRequest)
-				return
+			if isExist {
+
+				decodedSign, errDecode := hex.DecodeString(sign)
+
+				if errDecode != nil {
+					serv.log.ErrorHTTP(w, errors.New("decode sign was failed"), http.StatusNotFound)
+					return
+				}
+
+				if sign == "" {
+					serv.log.ErrorHTTP(w, errors.New("request was declined because does not contain sign"), http.StatusBadRequest)
+					return
+				}
+
+				rBody, err := io.ReadAll(r.Body)
+
+				if err != nil {
+					serv.log.ErrorHTTP(w, err, http.StatusNotFound)
+					return
+				}
+
+				if !funcslib.CompareSigns(decodedSign, rBody, serv.cfg.HashKey) {
+					serv.log.ErrorHTTP(w, errors.New("func CompareSigns() returns false. Request was declined"), http.StatusBadRequest)
+					return
+				}
+
+				r.Body = io.NopCloser(bytes.NewReader(rBody))
 			}
-
-			rBody, err := io.ReadAll(r.Body)
-
-			if err != nil {
-				serv.log.ErrorHTTP(w, err, http.StatusNotFound)
-				return
-			}
-
-			if !funcslib.CompareSigns(decodedSign, rBody, serv.cfg.HashKey) {
-				serv.log.ErrorHTTP(w, errors.New("func CompareSigns() returns false. Request was declined"), http.StatusBadRequest)
-				return
-			}
-
-			r.Body = io.NopCloser(bytes.NewReader(rBody))
 		}
 		h.ServeHTTP(w, r)
+
 	}
 
 	return http.HandlerFunc(hashFn)
