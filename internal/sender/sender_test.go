@@ -1,17 +1,18 @@
 package sender
 
 import (
-	mock_storage "DevOpsMetricsProject/internal/storage/mocks"
-
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
+	mock_storage "DevOpsMetricsProject/internal/storage/mocks"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
+func Test_dompsender_updateGaugeMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	storageChecker := mock_storage.NewMockMetricsRepository(mockCtrl)
@@ -36,7 +37,7 @@ func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
 	}
 }
 
-func TestSenderStorage_updateCounterMetrics(t *testing.T) {
+func Test_dompsender_updateCounterMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	storageChecker := mock_storage.NewMockMetricsRepository(mockCtrl)
@@ -61,8 +62,7 @@ func TestSenderStorage_updateCounterMetrics(t *testing.T) {
 	}
 }
 
-/*
-func TestSenderStorage_UpdateMetrics(t *testing.T) {
+func Test_dompsender_UpdateMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	storageChecker := mock_storage.NewMockMetricsRepository(mockCtrl)
@@ -78,8 +78,8 @@ func TestSenderStorage_UpdateMetrics(t *testing.T) {
 		actual: sender,
 	},
 	}
-	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.GaugeType, gomock.Any(), gomock.Any()).AnyTimes()
-	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.CounterType, gomock.Any(), gomock.Any()).AnyTimes().Return()
+
+	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(29)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.actual.cfg.PollInterval = -1
@@ -88,12 +88,10 @@ func TestSenderStorage_UpdateMetrics(t *testing.T) {
 	}
 }
 
+func Test_dompsender_SendMetricsHTTP(t *testing.T) {
 
-func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
-	g := map[string]float64{"testGauge": 1}
-	c := map[string]int{"testCounter": 2}
-
-	testingStorage := &storage_custom_mocks.StorageMockCustom{Gauge: g, Counter: c}
+	mockCtrl := gomock.NewController(t)
+	testingStorage := mock_storage.NewMockMetricsRepository(mockCtrl)
 	sender, err := CreateSender(&configs.ClientConfig{})
 	assert.Nil(t, err)
 	sender.senderMemStorage = testingStorage
@@ -107,6 +105,7 @@ func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 	},
 	}
 
+	testingStorage.EXPECT().ReadMemStorageFields().AnyTimes().Return(map[string]float64{"testGauge": 1}, map[string]int{"testCounter": 2})
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.sStg.cfg.ReportInterval = -1
@@ -129,4 +128,3 @@ func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 		})
 	}
 }
-*/
