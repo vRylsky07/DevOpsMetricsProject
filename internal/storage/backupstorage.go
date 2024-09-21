@@ -65,7 +65,7 @@ func (mStg *BackupSupportStorage) UpdateMetricByName(oper constants.UpdateOperat
 			timer := time.NewTimer(time.Duration(v) * time.Second)
 			<-timer.C
 		}
-		err = mStg.backup.UpdateMetricDB(mType, mName, updatedValue)
+		err = mStg.backup.UpdateMetricBackup(mType, mName, updatedValue)
 
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
