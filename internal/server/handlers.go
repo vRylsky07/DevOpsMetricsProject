@@ -298,7 +298,7 @@ func (serv *dompserver) HashCompareMiddleware(h http.Handler) http.Handler {
 			sign := ""
 
 			for k, v := range headers {
-				if k == "HashSHA256" {
+				if strings.EqualFold(k, "HashSHA256") {
 					isExist = true
 					sign = v[0]
 					break
@@ -306,7 +306,6 @@ func (serv *dompserver) HashCompareMiddleware(h http.Handler) http.Handler {
 			}
 
 			if isExist {
-
 				decodedSign, errDecode := hex.DecodeString(sign)
 
 				if errDecode != nil {
