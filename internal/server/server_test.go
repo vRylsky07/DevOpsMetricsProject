@@ -1,15 +1,15 @@
 package server
 
-/*
 import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
-	storage_custom_mocks "DevOpsMetricsProject/internal/storage/custommock"
+	mock_storage "DevOpsMetricsProject/internal/storage/mocks"
 
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -72,7 +72,7 @@ func Test_updateMetricHandler(t *testing.T) {
 			wantedStatus: http.StatusNotFound,
 		},
 	}
-	cfg := &configs.ServerConfig{SaveMode: constants.FileMode}
+	cfg := &configs.ServerConfig{SaveMode: constants.InMemoryMode}
 
 	serv, err := CreateNewServer(cfg)
 
@@ -97,6 +97,10 @@ func Test_getMainPageHandler(t *testing.T) {
 }
 
 func Test_dompserver_GetMetricHandler(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	testingStorage := mock_storage.NewMockMetricsRepository(mockCtrl)
+
 	tests := []*statusCheckStruct{
 		{
 			name:         "GetMetricHandler main case Gauge type",
@@ -114,12 +118,10 @@ func Test_dompserver_GetMetricHandler(t *testing.T) {
 	serv, err := CreateNewServer(&configs.ServerConfig{SaveMode: constants.FileMode})
 	assert.Nil(t, err)
 
-	g := map[string]float64{"testGauge": 55.5}
-	c := map[string]int{"testCounter": 55}
-
-	testingStorage := &storage_custom_mocks.StorageMockCustom{Gauge: g, Counter: c}
 	serv.coreStg = testingStorage
+
+	testingStorage.EXPECT().GetMetricByName(constants.GaugeType, gomock.Any()).AnyTimes().Return(55.5, nil)
+	testingStorage.EXPECT().GetMetricByName(constants.CounterType, gomock.Any()).AnyTimes().Return(float64(55), nil)
 
 	StatusCheckTest(t, tests, serv)
 }
-*/

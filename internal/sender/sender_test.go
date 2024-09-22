@@ -1,21 +1,21 @@
 package sender
 
 import (
-	mock_storage "DevOpsMetricsProject/internal/storage/mocks"
-
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
+	mock_storage "DevOpsMetricsProject/internal/storage/mocks"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
+func Test_dompsender_updateGaugeMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	storageChecker := mock_storage.NewMockMetricsRepository(mockCtrl)
-	sender, err := CreateSender(&configs.ClientConfig{})
+	sender, err := CreateSender(&configs.ClientConfig{}, 10)
 	assert.Nil(t, err)
 	sender.senderMemStorage = storageChecker
 
@@ -36,11 +36,11 @@ func TestSenderStorage_updateGaugeMetrics(t *testing.T) {
 	}
 }
 
-func TestSenderStorage_updateCounterMetrics(t *testing.T) {
+func Test_dompsender_updateCounterMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	storageChecker := mock_storage.NewMockMetricsRepository(mockCtrl)
-	sender, err := CreateSender(&configs.ClientConfig{})
+	sender, err := CreateSender(&configs.ClientConfig{}, 10)
 	assert.Nil(t, err)
 	sender.senderMemStorage = storageChecker
 
@@ -61,12 +61,11 @@ func TestSenderStorage_updateCounterMetrics(t *testing.T) {
 	}
 }
 
-/*
-func TestSenderStorage_UpdateMetrics(t *testing.T) {
+func Test_dompsender_UpdateMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	storageChecker := mock_storage.NewMockMetricsRepository(mockCtrl)
-	sender, err := CreateSender(&configs.ClientConfig{})
+	sender, err := CreateSender(&configs.ClientConfig{}, 10)
 	assert.Nil(t, err)
 	sender.senderMemStorage = storageChecker
 
@@ -78,8 +77,14 @@ func TestSenderStorage_UpdateMetrics(t *testing.T) {
 		actual: sender,
 	},
 	}
-	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.GaugeType, gomock.Any(), gomock.Any()).AnyTimes()
-	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), constants.CounterType, gomock.Any(), gomock.Any()).AnyTimes().Return()
+
+	count, err := cpu.Counts(true)
+
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	storageChecker.EXPECT().UpdateMetricByName(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(31 + count)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.actual.cfg.PollInterval = -1
@@ -88,13 +93,12 @@ func TestSenderStorage_UpdateMetrics(t *testing.T) {
 	}
 }
 
+func Test_dompsender_SendMetricsHTTP(t *testing.T) {
 
-func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
-	g := map[string]float64{"testGauge": 1}
-	c := map[string]int{"testCounter": 2}
-
-	testingStorage := &storage_custom_mocks.StorageMockCustom{Gauge: g, Counter: c}
-	sender, err := CreateSender(&configs.ClientConfig{})
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	testingStorage := mock_storage.NewMockMetricsRepository(mockCtrl)
+	sender, err := CreateSender(&configs.ClientConfig{}, 10)
 	assert.Nil(t, err)
 	sender.senderMemStorage = testingStorage
 
@@ -107,26 +111,12 @@ func TestSenderStorage_SendMetricsHTTP(t *testing.T) {
 	},
 	}
 
+	testingStorage.EXPECT().ReadMemStorageFields().Times(1)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.sStg.cfg.ReportInterval = -1
-			errs := tt.sStg.SendMetricsHTTP()
-
-			g, c := tt.sStg.GetStorage().ReadMemStorageFields()
-			if len(errs) != (len(g) + len(c)) {
-				t.Errorf("Send metrics to server HTTP FAILED!")
-			}
-
-			var isWantedErr bool
-			for _, err := range errs {
-				isWantedErr = strings.Contains(fmt.Sprint(err), "Server is not responding")
-				if isWantedErr == false {
-					break
-				}
-			}
-
-			assert.True(t, isWantedErr)
+			tt.sStg.SendMetricsHTTP()
 		})
 	}
 }
-*/
