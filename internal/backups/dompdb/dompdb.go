@@ -197,7 +197,7 @@ func PrepareTablesDB(db *sql.DB, log logger.Recorder) error {
 	return tx.Commit()
 }
 
-func (d *DompDB) UpdateMetricDB(mType constants.MetricType, mName string, mValue float64) error {
+func (d *DompDB) UpdateMetricBackup(mType constants.MetricType, mName string, mValue float64) error {
 
 	d.mtx.Lock()
 	defer d.mtx.Unlock()

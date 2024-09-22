@@ -18,6 +18,7 @@ type ClientConfig struct {
 	Loglevel       string `env:"LOG_LEVEL"`
 	CompressData   bool   `env:"COMPRESS_DATA"`
 	UseBatches     bool   `env:"USE_BATCHES"`
+	HashKey        string `env:"KEY"`
 }
 
 func (cfg *ClientConfig) SetClientConfigFlags() {
@@ -28,6 +29,7 @@ func (cfg *ClientConfig) SetClientConfigFlags() {
 	lvl := flag.String("l", "info", "log level")
 	compress := flag.Bool("compress", true, "should we use data compress")
 	batches := flag.Bool("batches", true, "should we send data with batches")
+	hkey := flag.String("k", "", "hash encoding key")
 	flag.Parse()
 
 	cfg.Address = *address
@@ -36,6 +38,7 @@ func (cfg *ClientConfig) SetClientConfigFlags() {
 	cfg.Loglevel = *lvl
 	cfg.CompressData = *compress
 	cfg.UseBatches = *batches
+	cfg.HashKey = *hkey
 
 	err := env.Parse(cfg)
 	if err != nil {
@@ -58,6 +61,7 @@ type ServerConfig struct {
 	TempFile      string `env:"FILE_STORAGE_PATH"`
 	RestoreBool   bool   `env:"RESTORE"`
 	DatabaseDSN   string `env:"DATABASE_DSN"`
+	HashKey       string `env:"KEY"`
 	SaveMode      constants.SaveMode
 }
 
@@ -69,6 +73,7 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	temp := flag.String("f", "/tmp/metrics-db.json", "last metrics update")
 	restore := flag.Bool("r", true, "restore data or not")
 	dsn := flag.String("d", "", "database dsn")
+	hkey := flag.String("k", "", "hash encoding key")
 	flag.Parse()
 
 	cfg.SaveMode = constants.FileMode
@@ -78,6 +83,7 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	cfg.TempFile = *temp
 	cfg.RestoreBool = *restore
 	cfg.DatabaseDSN = *dsn
+	cfg.HashKey = *hkey
 
 	err := env.Parse(cfg)
 	if err != nil {

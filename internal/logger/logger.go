@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+//go:generate mockgen -source=logger.go -destination=mocks/logger_mocks.go
 type Recorder interface {
 	Error(msg string, fields ...interface{})
 	ErrorHTTP(w http.ResponseWriter, err error, code int)

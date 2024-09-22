@@ -7,6 +7,7 @@ import (
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -194,6 +195,7 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 	}
 
 	sendURL := "http://" + sStg.cfg.Address + "/update" + batchStr + "/"
+	sign := funcslib.MakeSignSHA(mJSON.Bytes(), sStg.cfg.HashKey)
 
 	if sStg.cfg.CompressData {
 		zipped, compErr := funcslib.CompressData(mJSON.Bytes())
@@ -217,6 +219,10 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 
 	if sStg.cfg.CompressData {
 		req.Header.Add("Content-Encoding", "gzip ")
+	}
+
+	if sStg.cfg.HashKey != "" {
+		req.Header.Add("HashSHA256", hex.EncodeToString(sign))
 	}
 
 	var resp *http.Response
