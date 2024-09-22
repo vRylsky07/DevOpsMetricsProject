@@ -209,7 +209,7 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 		}
 	}
 
-	sStg.jobs <- &coretypes.ReqProps{Url: sendURL, Body: mJSON, Sign: sign, MetricName: mName, IsBatch: sStg.cfg.UseBatches}
+	sStg.jobs <- &coretypes.ReqProps{URL: sendURL, Body: mJSON, Sign: sign, MetricName: mName, IsBatch: sStg.cfg.UseBatches}
 }
 
 func (sStg *dompsender) ManageRequests(catchErrs *[]error, ticker *time.Ticker) {
@@ -247,7 +247,7 @@ func (sStg *dompsender) RequestSendingWorker(id int, jobs <-chan *coretypes.ReqP
 
 		client := http.Client{}
 
-		req, errReq := http.NewRequest("POST", j.Url, j.Body)
+		req, errReq := http.NewRequest("POST", j.URL, j.Body)
 
 		if errReq != nil {
 			sStg.log.Error(errReq.Error())
@@ -282,7 +282,7 @@ func (sStg *dompsender) RequestSendingWorker(id int, jobs <-chan *coretypes.ReqP
 		}
 
 		if errDo != nil {
-			errStr := "Server is not responding. URL to send was: " + j.Url
+			errStr := "Server is not responding. URL to send was: " + j.URL
 			sStg.log.Error(errStr)
 			resp.Body.Close()
 			continue

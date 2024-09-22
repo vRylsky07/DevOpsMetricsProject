@@ -12,7 +12,7 @@ type Metrics struct {
 }
 
 type ReqProps struct {
-	Url        string
+	URL        string
 	Body       *bytes.Buffer
 	Sign       string
 	MetricName string
