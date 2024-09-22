@@ -19,6 +19,7 @@ type ClientConfig struct {
 	CompressData   bool   `env:"COMPRESS_DATA"`
 	UseBatches     bool   `env:"USE_BATCHES"`
 	HashKey        string `env:"KEY"`
+	RateLimit      int    `env:"RATE_LIMIT"`
 }
 
 func (cfg *ClientConfig) SetClientConfigFlags() {
@@ -30,6 +31,7 @@ func (cfg *ClientConfig) SetClientConfigFlags() {
 	compress := flag.Bool("compress", true, "should we use data compress")
 	batches := flag.Bool("batches", true, "should we send data with batches")
 	hkey := flag.String("k", "", "hash encoding key")
+	rLimit := flag.Int("rlimit", 3, "limits of request workers")
 	flag.Parse()
 
 	cfg.Address = *address
@@ -39,6 +41,7 @@ func (cfg *ClientConfig) SetClientConfigFlags() {
 	cfg.CompressData = *compress
 	cfg.UseBatches = *batches
 	cfg.HashKey = *hkey
+	cfg.RateLimit = *rLimit
 
 	err := env.Parse(cfg)
 	if err != nil {
@@ -74,6 +77,7 @@ func (cfg *ServerConfig) SetServerConfigFlags() {
 	restore := flag.Bool("r", true, "restore data or not")
 	dsn := flag.String("d", "", "database dsn")
 	hkey := flag.String("k", "", "hash encoding key")
+
 	flag.Parse()
 
 	cfg.SaveMode = constants.FileMode

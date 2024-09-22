@@ -13,8 +13,11 @@ import (
 	"fmt"
 	"net/http"
 	"runtime"
+	"sync"
 	"time"
 
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 	"go.uber.org/zap"
 )
 
@@ -70,8 +73,26 @@ func (sStg *dompsender) UpdateMetrics() {
 			<-ticker.C
 		}
 
-		sStg.updateCounterMetrics()
-		sStg.updateGaugeMetrics()
+		var wg sync.WaitGroup
+
+		wg.Add(3)
+
+		go func() {
+			defer wg.Done()
+			sStg.updateCounterMetrics()
+		}()
+
+		go func() {
+			defer wg.Done()
+			sStg.updateGaugeMetrics()
+		}()
+
+		go func() {
+			defer wg.Done()
+			sStg.updateExtraGaugeMetrics()
+		}()
+
+		wg.Wait()
 
 		if sStg.cfg.PollInterval == -1 {
 			return
@@ -116,7 +137,7 @@ func (sStg *dompsender) StopAgentProcessing() {
 	close(sStg.jobs)
 }
 
-func CreateSender(cfg *configs.ClientConfig, jobs chan *coretypes.ReqProps) (*dompsender, error) {
+func CreateSender(cfg *configs.ClientConfig, bufferSize int) (*dompsender, error) {
 	senderStorage := storage.NewMemStorage()
 
 	log, err := logger.Initialize(cfg.Loglevel, "agent_")
@@ -125,8 +146,29 @@ func CreateSender(cfg *configs.ClientConfig, jobs chan *coretypes.ReqProps) (*do
 		return nil, err
 	}
 
+	jobs := make(chan *coretypes.ReqProps, bufferSize)
+
 	mSender := &dompsender{senderMemStorage: senderStorage, cfg: cfg, log: log, jobs: jobs}
+
+	for i := 1; i <= cfg.RateLimit; i++ {
+		go mSender.RequestSendingWorker(i, jobs)
+	}
+
 	return mSender, nil
+}
+
+func (sStg *dompsender) updateExtraGaugeMetrics() {
+
+	v, _ := mem.VirtualMemory()
+	cpuPercents, _ := cpu.Percent(0, true)
+
+	sStg.senderMemStorage.UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "TotalMemory", float64(v.Total))
+	sStg.senderMemStorage.UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "FreeMemory", float64(v.Free))
+
+	for i, v := range cpuPercents {
+		mName := fmt.Sprintf("CPUutilization%d", i+1)
+		sStg.senderMemStorage.UpdateMetricByName(constants.RenewOperation, constants.GaugeType, mName, v)
+	}
 }
 
 func (sStg *dompsender) updateCounterMetrics() {
@@ -239,7 +281,13 @@ func (sStg *dompsender) ManageRequests(catchErrs *[]error, ticker *time.Ticker) 
 
 func (sStg *dompsender) RequestSendingWorker(id int, jobs <-chan *coretypes.ReqProps) {
 
+	var resp *http.Response
+
 	for j := range jobs {
+
+		if resp != nil {
+			resp.Body.Close()
+		}
 
 		if j == nil {
 			continue
@@ -264,7 +312,6 @@ func (sStg *dompsender) RequestSendingWorker(id int, jobs <-chan *coretypes.ReqP
 			req.Header.Add("HashSHA256", j.Sign)
 		}
 
-		var resp *http.Response
 		var errDo error
 
 		for _, v := range *constants.GetRetryIntervals() {
@@ -284,13 +331,11 @@ func (sStg *dompsender) RequestSendingWorker(id int, jobs <-chan *coretypes.ReqP
 		if errDo != nil {
 			errStr := "Server is not responding. URL to send was: " + j.URL
 			sStg.log.Error(errStr)
-			resp.Body.Close()
 			continue
 		}
 
 		if resp.StatusCode != http.StatusOK {
 			sStg.log.Info(fmt.Sprintf(`Metrics update failed! Status code: %d`, resp.StatusCode))
-			resp.Body.Close()
 			continue
 		}
 
