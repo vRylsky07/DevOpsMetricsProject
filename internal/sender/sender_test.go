@@ -16,7 +16,7 @@ func Test_dompsender_updateGaugeMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	storageChecker := mock_storage.NewMockMetricsRepository(mockCtrl)
-	sender, err := CreateSender(&configs.ClientConfig{})
+	sender, err := CreateSender(&configs.ClientConfig{}, nil)
 	assert.Nil(t, err)
 	sender.senderMemStorage = storageChecker
 
@@ -41,7 +41,7 @@ func Test_dompsender_updateCounterMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	storageChecker := mock_storage.NewMockMetricsRepository(mockCtrl)
-	sender, err := CreateSender(&configs.ClientConfig{})
+	sender, err := CreateSender(&configs.ClientConfig{}, nil)
 	assert.Nil(t, err)
 	sender.senderMemStorage = storageChecker
 
@@ -66,7 +66,7 @@ func Test_dompsender_UpdateMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	storageChecker := mock_storage.NewMockMetricsRepository(mockCtrl)
-	sender, err := CreateSender(&configs.ClientConfig{})
+	sender, err := CreateSender(&configs.ClientConfig{}, nil)
 	assert.Nil(t, err)
 	sender.senderMemStorage = storageChecker
 
@@ -93,7 +93,7 @@ func Test_dompsender_SendMetricsHTTP(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	testingStorage := mock_storage.NewMockMetricsRepository(mockCtrl)
-	sender, err := CreateSender(&configs.ClientConfig{})
+	sender, err := CreateSender(&configs.ClientConfig{}, nil)
 	assert.Nil(t, err)
 	sender.senderMemStorage = testingStorage
 

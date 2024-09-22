@@ -7,10 +7,9 @@ on:
       - main
 
 jobs:
-
   statictest:
     runs-on: ubuntu-latest
-    container: golang:1.21
+    container: golang:1.22
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -22,6 +21,7 @@ jobs:
           latest: true
           fileName: statictest
           out-file-path: .tools
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup autotest binary
         run: |

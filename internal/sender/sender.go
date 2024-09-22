@@ -3,6 +3,7 @@ package sender
 import (
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
+	"DevOpsMetricsProject/internal/coretypes"
 	"DevOpsMetricsProject/internal/funcslib"
 	"DevOpsMetricsProject/internal/logger"
 	"DevOpsMetricsProject/internal/storage"
@@ -29,6 +30,7 @@ type dompsender struct {
 	stopThread       bool
 	cfg              *configs.ClientConfig
 	log              logger.Recorder
+	jobs             chan *coretypes.ReqProps
 }
 
 func (sStg *dompsender) GetLogger() logger.Recorder {
@@ -111,9 +113,10 @@ func (sStg *dompsender) StopAgentProcessing() {
 		return
 	}
 	sStg.stopThread = true
+	close(sStg.jobs)
 }
 
-func CreateSender(cfg *configs.ClientConfig) (*dompsender, error) {
+func CreateSender(cfg *configs.ClientConfig, jobs chan *coretypes.ReqProps) (*dompsender, error) {
 	senderStorage := storage.NewMemStorage()
 
 	log, err := logger.Initialize(cfg.Loglevel, "agent_")
@@ -122,7 +125,7 @@ func CreateSender(cfg *configs.ClientConfig) (*dompsender, error) {
 		return nil, err
 	}
 
-	mSender := &dompsender{senderMemStorage: senderStorage, cfg: cfg, log: log}
+	mSender := &dompsender{senderMemStorage: senderStorage, cfg: cfg, log: log, jobs: jobs}
 	return mSender, nil
 }
 
@@ -178,7 +181,7 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 		defer ticker.Reset(time.Duration(sStg.cfg.ReportInterval) * time.Second)
 	}
 
-	if !sStg.IsValid() {
+	if !sStg.IsValid() || sStg.jobs == nil {
 		return
 	}
 
@@ -195,7 +198,7 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 	}
 
 	sendURL := "http://" + sStg.cfg.Address + "/update" + batchStr + "/"
-	sign := funcslib.MakeSignSHA(mJSON.Bytes(), sStg.cfg.HashKey)
+	sign := hex.EncodeToString(funcslib.MakeSignSHA(mJSON.Bytes(), sStg.cfg.HashKey))
 
 	if sStg.cfg.CompressData {
 		zipped, compErr := funcslib.CompressData(mJSON.Bytes())
@@ -206,55 +209,7 @@ func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName strin
 		}
 	}
 
-	client := http.Client{}
-
-	req, errReq := http.NewRequest("POST", sendURL, mJSON)
-
-	if errReq != nil {
-		sStg.log.Error(errReq.Error())
-		return
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-
-	if sStg.cfg.CompressData {
-		req.Header.Add("Content-Encoding", "gzip ")
-	}
-
-	if sStg.cfg.HashKey != "" {
-		req.Header.Add("HashSHA256", hex.EncodeToString(sign))
-	}
-
-	var resp *http.Response
-	var errDo error
-
-	for _, v := range *constants.GetRetryIntervals() {
-		if v != 0 {
-			sStg.log.Info("Server is not responding. Retry to do post request...")
-			timer := time.NewTimer(time.Duration(v) * time.Second)
-			<-timer.C
-		}
-		resp, errDo = client.Do(req)
-
-		if errDo == nil {
-			defer resp.Body.Close()
-			break
-		}
-	}
-
-	if errDo != nil {
-		errStr := "Server is not responding. URL to send was: " + sendURL
-		*catchErrs = append(*catchErrs, errors.New(errStr))
-		sStg.log.Error(errStr)
-		return
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		sStg.log.Info(fmt.Sprintf(`Metrics update failed! Status code: %d`, resp.StatusCode))
-		return
-	}
-
-	sStg.log.Info(fmt.Sprintf(`Metric%s update was successful! Status code: %d`, batchStr, resp.StatusCode), zap.String("MetricName", mName))
+	sStg.jobs <- &coretypes.ReqProps{Url: sendURL, Body: mJSON, Sign: sign, MetricName: mName, IsBatch: sStg.cfg.UseBatches}
 }
 
 func (sStg *dompsender) ManageRequests(catchErrs *[]error, ticker *time.Ticker) {
@@ -279,5 +234,73 @@ func (sStg *dompsender) ManageRequests(catchErrs *[]error, ticker *time.Ticker) 
 			mJSON, errJSON = funcslib.EncodeMetricJSON(constants.CounterType, nameCounter, float64(valueCounter))
 			sStg.postRequestByMetricType(ticker, nameCounter, mJSON, errJSON, catchErrs)
 		}
+	}
+}
+
+func (sStg *dompsender) RequestSendingWorker(id int, jobs <-chan *coretypes.ReqProps) {
+
+	for j := range jobs {
+
+		if j == nil {
+			continue
+		}
+
+		client := http.Client{}
+
+		req, errReq := http.NewRequest("POST", j.Url, j.Body)
+
+		if errReq != nil {
+			sStg.log.Error(errReq.Error())
+			continue
+		}
+
+		req.Header.Add("Content-Type", "application/json")
+
+		if sStg.cfg.CompressData {
+			req.Header.Add("Content-Encoding", "gzip ")
+		}
+
+		if sStg.cfg.HashKey != "" {
+			req.Header.Add("HashSHA256", j.Sign)
+		}
+
+		var resp *http.Response
+		var errDo error
+
+		for _, v := range *constants.GetRetryIntervals() {
+			if v != 0 {
+				sStg.log.Info("Server is not responding. Retry to do post request...")
+				timer := time.NewTimer(time.Duration(v) * time.Second)
+				<-timer.C
+			}
+			resp, errDo = client.Do(req)
+
+			if errDo == nil {
+				resp.Body.Close()
+				break
+			}
+		}
+
+		if errDo != nil {
+			errStr := "Server is not responding. URL to send was: " + j.Url
+			sStg.log.Error(errStr)
+			resp.Body.Close()
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			sStg.log.Info(fmt.Sprintf(`Metrics update failed! Status code: %d`, resp.StatusCode))
+			resp.Body.Close()
+			continue
+		}
+
+		batchStr := ""
+
+		if j.IsBatch {
+			batchStr = "s"
+		}
+
+		sStg.log.Info(fmt.Sprintf(`[WorkerID: %d] Metric%s update was successful! Status code: %d`, id, batchStr, resp.StatusCode), zap.String("MetricName", j.MetricName))
+		resp.Body.Close()
 	}
 }
