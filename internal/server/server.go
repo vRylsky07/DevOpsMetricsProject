@@ -42,6 +42,7 @@ func Start() {
 
 	dompserv.log.Info("Server was successfully initialized!")
 
+	dompserv.log.Info("Starting server on address: " + dompserv.cfg.Address)
 	err = http.ListenAndServe(dompserv.cfg.Address, dompserv.coreMux)
 
 	if err != nil {

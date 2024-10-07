@@ -1,4 +1,18 @@
 services:
+
+  server:
+    build:
+      dockerfile: cmd/server/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ADDRESS=${SERVER_ADDRESS}
+
   agent:
     build:
       dockerfile: cmd/agent/Dockerfile
+    depends_on:
+      - server
+    environment:
+      - ADDRESS=${AGENT_ADDRESS}
+
