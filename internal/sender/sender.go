@@ -1,6 +1,7 @@
 package sender
 
 import (
+	"DevOpsMetricsProject/internal/common"
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/coretypes"
@@ -21,15 +22,8 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:generate mockgen -source=sender.go -destination=mocks/sender_mocks.go
-type MetricsProvider interface {
-	SendMetricsHTTP(reportInterval int)
-	GetStorage() storage.MetricsRepository
-	CreateMetricURL(mType constants.MetricType, mainURL string, name string, value float64) string
-}
-
 type dompsender struct {
-	senderMemStorage storage.MetricsRepository
+	senderMemStorage common.MetricsRepository
 	stopThread       bool
 	cfg              *configs.ClientConfig
 	log              logger.Recorder
@@ -48,7 +42,7 @@ func (sStg *dompsender) IsValid() bool {
 	return false
 }
 
-func (sStg *dompsender) GetStorage() storage.MetricsRepository {
+func (sStg *dompsender) GetStorage() common.MetricsRepository {
 	if !sStg.IsValid() {
 		return nil
 	}

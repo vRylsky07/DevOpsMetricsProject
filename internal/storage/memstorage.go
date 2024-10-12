@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"DevOpsMetricsProject/internal/common"
 	"DevOpsMetricsProject/internal/constants"
 	"errors"
 	"sync"
@@ -12,7 +13,7 @@ type MemStorage struct {
 	mtx     sync.Mutex
 }
 
-func NewMemStorage() MetricsRepository {
+func NewMemStorage() common.MetricsRepository {
 	return &MemStorage{gauge: map[string]float64{}, counter: map[string]int{}}
 }
 

@@ -2,6 +2,7 @@ package storage
 
 import (
 	backup "DevOpsMetricsProject/internal/backups"
+	"DevOpsMetricsProject/internal/common"
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/logger"
 	"errors"
@@ -17,7 +18,7 @@ type BackupSupportStorage struct {
 	MemStorage
 }
 
-func NewBackupSupportStorage(restore bool, backup backup.MetricsBackup, log logger.Recorder) MetricsRepository {
+func NewBackupSupportStorage(restore bool, backup backup.MetricsBackup, log logger.Recorder) common.MetricsRepository {
 	mStg := &BackupSupportStorage{}
 	mStg.backup = backup
 	mStg.log = log

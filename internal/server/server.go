@@ -4,6 +4,7 @@ import (
 	backup "DevOpsMetricsProject/internal/backups"
 	"DevOpsMetricsProject/internal/backups/dompdb"
 	filesbackup "DevOpsMetricsProject/internal/backups/files"
+	"DevOpsMetricsProject/internal/common"
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/logger"
@@ -17,7 +18,7 @@ import (
 
 type dompserver struct {
 	coreMux *chi.Mux
-	coreStg storage.MetricsRepository
+	coreStg common.MetricsRepository
 	cfg     *configs.ServerConfig
 	log     logger.Recorder
 	pinger  backup.PingerDB
@@ -101,7 +102,7 @@ func NewDompServer(cfg *configs.ServerConfig) (*dompserver, error) {
 	}
 
 	coreMux := chi.NewRouter()
-	var coreStg storage.MetricsRepository
+	var coreStg common.MetricsRepository
 	var backuper backup.MetricsBackup
 	var bckErr error
 	var pinger backup.PingerDB
