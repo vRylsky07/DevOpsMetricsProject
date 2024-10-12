@@ -176,7 +176,3 @@ func MakeSignSHA(src []byte, key string) []byte {
 	h.Write(src)
 	return h.Sum(nil)
 }
-
-func CompareSigns(sign []byte, body []byte, key string) bool {
-	return string(sign) == string(MakeSignSHA(body, key))
-}

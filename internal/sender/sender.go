@@ -67,8 +67,7 @@ func (sStg *dompsender) UpdateMetrics() {
 		defer ticker.Stop()
 	}
 
-	for !sStg.stopThread {
-
+	updateOnce := func() {
 		if ticker != nil {
 			<-ticker.C
 		}
@@ -93,10 +92,15 @@ func (sStg *dompsender) UpdateMetrics() {
 		}()
 
 		wg.Wait()
+	}
 
-		if sStg.cfg.PollInterval == -1 {
-			return
-		}
+	if sStg.cfg.PollInterval == -1 {
+		updateOnce()
+		return
+	}
+
+	for !sStg.stopThread {
+		updateOnce()
 	}
 }
 
@@ -137,7 +141,7 @@ func (sStg *dompsender) StopAgentProcessing() {
 	close(sStg.jobs)
 }
 
-func CreateSender(cfg *configs.ClientConfig, bufferSize int) (*dompsender, error) {
+func CreateSender(cfg *configs.ClientConfig) (*dompsender, error) {
 	senderStorage := storage.NewMemStorage()
 
 	log, err := logger.Initialize(cfg.Loglevel, "agent_")
@@ -146,7 +150,7 @@ func CreateSender(cfg *configs.ClientConfig, bufferSize int) (*dompsender, error
 		return nil, err
 	}
 
-	jobs := make(chan *coretypes.ReqProps, bufferSize)
+	jobs := make(chan *coretypes.ReqProps, cfg.JobsBuffer)
 
 	mSender := &dompsender{senderMemStorage: senderStorage, cfg: cfg, log: log, jobs: jobs}
 
@@ -217,11 +221,7 @@ func (sStg *dompsender) updateGaugeMetrics() {
 	sStg.GetStorage().UpdateMetricByName(constants.RenewOperation, constants.GaugeType, "TotalAlloc", float64(mFromRuntime.TotalAlloc))
 }
 
-func (sStg *dompsender) postRequestByMetricType(ticker *time.Ticker, mName string, mJSON *bytes.Buffer, encErr error, catchErrs *[]error) {
-	if ticker != nil {
-		ticker.Stop()
-		defer ticker.Reset(time.Duration(sStg.cfg.ReportInterval) * time.Second)
-	}
+func (sStg *dompsender) postRequestByMetricType(mName string, mJSON *bytes.Buffer, encErr error, catchErrs *[]error) {
 
 	if !sStg.IsValid() || sStg.jobs == nil {
 		return
@@ -262,19 +262,19 @@ func (sStg *dompsender) ManageRequests(catchErrs *[]error, ticker *time.Ticker) 
 	case true:
 		g, c := sStg.GetStorage().ReadMemStorageFields()
 		mJSON, errJSON = funcslib.EncodeBatchJSON(&g, &c)
-		sStg.postRequestByMetricType(ticker, "batch", mJSON, errJSON, catchErrs)
+		sStg.postRequestByMetricType("batch", mJSON, errJSON, catchErrs)
 	case false:
 
 		gauge, counter := sStg.GetStorage().ReadMemStorageFields()
 
 		for nameGauge, valueGauge := range gauge {
 			mJSON, errJSON = funcslib.EncodeMetricJSON(constants.GaugeType, nameGauge, valueGauge)
-			sStg.postRequestByMetricType(ticker, nameGauge, mJSON, errJSON, catchErrs)
+			sStg.postRequestByMetricType(nameGauge, mJSON, errJSON, catchErrs)
 		}
 
 		for nameCounter, valueCounter := range counter {
 			mJSON, errJSON = funcslib.EncodeMetricJSON(constants.CounterType, nameCounter, float64(valueCounter))
-			sStg.postRequestByMetricType(ticker, nameCounter, mJSON, errJSON, catchErrs)
+			sStg.postRequestByMetricType(nameCounter, mJSON, errJSON, catchErrs)
 		}
 	}
 }
@@ -282,6 +282,8 @@ func (sStg *dompsender) ManageRequests(catchErrs *[]error, ticker *time.Ticker) 
 func (sStg *dompsender) RequestSendingWorker(id int, jobs <-chan *coretypes.ReqProps) {
 
 	var resp *http.Response
+
+	client := http.Client{}
 
 	for j := range jobs {
 
@@ -292,8 +294,6 @@ func (sStg *dompsender) RequestSendingWorker(id int, jobs <-chan *coretypes.ReqP
 		if j == nil {
 			continue
 		}
-
-		client := http.Client{}
 
 		req, errReq := http.NewRequest("POST", j.URL, j.Body)
 

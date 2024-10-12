@@ -5,6 +5,7 @@ import (
 	funcslib "DevOpsMetricsProject/internal/funcslib"
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -325,8 +326,8 @@ func (serv *dompserver) HashCompareMiddleware(h http.Handler) http.Handler {
 					return
 				}
 
-				if !funcslib.CompareSigns(decodedSign, rBody, serv.cfg.HashKey) {
-					serv.log.ErrorHTTP(w, errors.New("func CompareSigns() returns false. Request was declined"), http.StatusBadRequest)
+				if !hmac.Equal(decodedSign, funcslib.MakeSignSHA(rBody, serv.cfg.HashKey)) {
+					serv.log.ErrorHTTP(w, errors.New("sign checking failed. Request was declined"), http.StatusBadRequest)
 					return
 				}
 

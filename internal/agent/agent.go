@@ -9,7 +9,7 @@ import (
 func Start() {
 	cfg := configs.CreateClientConfig()
 
-	mSender, err := sender.CreateSender(cfg, 10)
+	mSender, err := sender.CreateSender(cfg)
 	if err != nil {
 		panic(err)
 	}

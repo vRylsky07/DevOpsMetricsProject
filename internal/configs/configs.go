@@ -20,6 +20,7 @@ type ClientConfig struct {
 	UseBatches     bool   `env:"USE_BATCHES"`
 	HashKey        string `env:"KEY"`
 	RateLimit      int    `env:"RATE_LIMIT"`
+	JobsBuffer     int    `env:"JOBS_BUFFER"`
 }
 
 func (cfg *ClientConfig) SetClientConfigFlags() {
@@ -27,11 +28,12 @@ func (cfg *ClientConfig) SetClientConfigFlags() {
 	address := flag.String("a", "localhost:8080", "input endpoint address")
 	pollInterval := flag.Int("p", 2, "input metrics update interval in seconds")
 	reportInterval := flag.Int("r", 10, "input interval to send metrics in seconds")
-	lvl := flag.String("l", "info", "log level")
+	lvl := flag.String("loglvl", "info", "log level")
 	compress := flag.Bool("compress", true, "should we use data compress")
 	batches := flag.Bool("batches", true, "should we send data with batches")
 	hkey := flag.String("k", "", "hash encoding key")
-	rLimit := flag.Int("rlimit", 3, "limits of request workers")
+	rLimit := flag.Int("l", 3, "limits of request workers")
+	jobsBuffer := flag.Int("jbuffer", 10, "jobs buffer size")
 	flag.Parse()
 
 	cfg.Address = *address
@@ -42,6 +44,7 @@ func (cfg *ClientConfig) SetClientConfigFlags() {
 	cfg.UseBatches = *batches
 	cfg.HashKey = *hkey
 	cfg.RateLimit = *rLimit
+	cfg.JobsBuffer = *jobsBuffer
 
 	err := env.Parse(cfg)
 	if err != nil {
@@ -71,7 +74,7 @@ type ServerConfig struct {
 func (cfg *ServerConfig) SetServerConfigFlags() {
 
 	address := flag.String("a", "localhost:8080", "input endpoint address")
-	lvl := flag.String("l", "info", "log level")
+	lvl := flag.String("loglvl", "info", "log level")
 	interval := flag.Int("i", 300, "metrics save interval")
 	temp := flag.String("f", "/tmp/metrics-db.json", "last metrics update")
 	restore := flag.Bool("r", true, "restore data or not")
