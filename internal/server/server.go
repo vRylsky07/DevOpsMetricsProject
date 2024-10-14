@@ -4,6 +4,7 @@ import (
 	backup "DevOpsMetricsProject/internal/backups"
 	"DevOpsMetricsProject/internal/backups/dompdb"
 	filesbackup "DevOpsMetricsProject/internal/backups/files"
+	"DevOpsMetricsProject/internal/common"
 	"DevOpsMetricsProject/internal/configs"
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/logger"
@@ -17,7 +18,7 @@ import (
 
 type dompserver struct {
 	coreMux *chi.Mux
-	coreStg storage.MetricsRepository
+	coreStg common.MetricsRepository
 	cfg     *configs.ServerConfig
 	log     logger.Recorder
 	pinger  backup.PingerDB
@@ -42,6 +43,7 @@ func Start() {
 
 	dompserv.log.Info("Server was successfully initialized!")
 
+	dompserv.log.Info("Starting server on address: " + dompserv.cfg.Address)
 	err = http.ListenAndServe(dompserv.cfg.Address, dompserv.coreMux)
 
 	if err != nil {
@@ -59,8 +61,9 @@ func CreateNewServer(cfg *configs.ServerConfig) (*dompserver, error) {
 
 	dompserv.coreMux.Use(dompserv.WithResponseLog)
 	dompserv.coreMux.Use(dompserv.WithRequestLog)
-	dompserv.coreMux.Use(dompserv.gzipHandle)
-	dompserv.coreMux.Use(dompserv.DecompressHandler)
+	dompserv.coreMux.Use(dompserv.GzipMiddleware)
+	dompserv.coreMux.Use(dompserv.DecompressMiddleware)
+	dompserv.coreMux.Use(dompserv.HashCompareMiddleware)
 
 	dompserv.coreMux.Get("/", dompserv.GetMainPageHandler)
 	dompserv.coreMux.Get("/ping", dompserv.PingDatabaseHandler)
@@ -99,7 +102,7 @@ func NewDompServer(cfg *configs.ServerConfig) (*dompserver, error) {
 	}
 
 	coreMux := chi.NewRouter()
-	var coreStg storage.MetricsRepository
+	var coreStg common.MetricsRepository
 	var backuper backup.MetricsBackup
 	var bckErr error
 	var pinger backup.PingerDB

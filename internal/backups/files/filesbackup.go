@@ -58,7 +58,7 @@ func NewMetricsBackup(cfg *configs.ServerConfig, log logger.Recorder) (backup.Me
 	return fBack, nil
 }
 
-func (fb *FilesBackup) UpdateMetricDB(mType constants.MetricType, mName string, mValue float64) error {
+func (fb *FilesBackup) UpdateMetricBackup(mType constants.MetricType, mName string, mValue float64) error {
 	if !fb.IsValid() {
 		return errors.New("UpdateMetricDB() - server is not valid")
 	}

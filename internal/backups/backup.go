@@ -2,8 +2,9 @@ package backup
 
 import "DevOpsMetricsProject/internal/constants"
 
+//go:generate mockgen -source=backup.go -destination=mocks/backup_mocks.go
 type MetricsBackup interface {
-	UpdateMetricDB(mType constants.MetricType, mName string, mValue float64) error
+	UpdateMetricBackup(mType constants.MetricType, mName string, mValue float64) error
 	IsValid() bool
 	GetAllData() (*map[string]float64, *map[string]int)
 }

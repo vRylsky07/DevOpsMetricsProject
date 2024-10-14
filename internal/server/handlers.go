@@ -5,6 +5,8 @@ import (
 	funcslib "DevOpsMetricsProject/internal/funcslib"
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"encoding/hex"
 	"errors"
 	"io"
 	"net/http"
@@ -283,6 +285,62 @@ func (serv *dompserver) PingDatabaseHandler(res http.ResponseWriter, _ *http.Req
 
 // Middlewares
 
+func (serv *dompserver) HashCompareMiddleware(h http.Handler) http.Handler {
+	if !serv.IsValid() {
+		return h
+	}
+
+	hashFn := func(w http.ResponseWriter, r *http.Request) {
+
+		if serv.cfg.HashKey != "" {
+			headers := r.Header
+
+			isExist := false
+			sign := ""
+
+			for k, v := range headers {
+				if strings.EqualFold(k, "HashSHA256") {
+					isExist = true
+					sign = v[0]
+					break
+				}
+			}
+
+			if isExist {
+				decodedSign, errDecode := hex.DecodeString(sign)
+
+				if errDecode != nil {
+					serv.log.ErrorHTTP(w, errors.New("decode sign was failed"), http.StatusNotFound)
+					return
+				}
+
+				if sign == "" {
+					serv.log.ErrorHTTP(w, errors.New("request was declined because does not contain sign"), http.StatusBadRequest)
+					return
+				}
+
+				rBody, err := io.ReadAll(r.Body)
+
+				if err != nil {
+					serv.log.ErrorHTTP(w, err, http.StatusNotFound)
+					return
+				}
+
+				if !hmac.Equal(decodedSign, funcslib.MakeSignSHA(rBody, serv.cfg.HashKey)) {
+					serv.log.ErrorHTTP(w, errors.New("sign checking failed. Request was declined"), http.StatusBadRequest)
+					return
+				}
+
+				r.Body = io.NopCloser(bytes.NewReader(rBody))
+			}
+		}
+		h.ServeHTTP(w, r)
+
+	}
+
+	return http.HandlerFunc(hashFn)
+}
+
 func (serv *dompserver) WithRequestLog(h http.Handler) http.Handler {
 	if !serv.IsValid() {
 		return h
@@ -319,7 +377,7 @@ func (serv *dompserver) WithResponseLog(h http.Handler) http.Handler {
 	return http.HandlerFunc(logFn)
 }
 
-func (serv *dompserver) gzipHandle(next http.Handler) http.Handler {
+func (serv *dompserver) GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
@@ -339,7 +397,7 @@ func (serv *dompserver) gzipHandle(next http.Handler) http.Handler {
 	})
 }
 
-func (serv *dompserver) DecompressHandler(next http.Handler) http.Handler {
+func (serv *dompserver) DecompressMiddleware(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {

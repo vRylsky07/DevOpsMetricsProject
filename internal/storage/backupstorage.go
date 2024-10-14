@@ -2,6 +2,7 @@ package storage
 
 import (
 	backup "DevOpsMetricsProject/internal/backups"
+	"DevOpsMetricsProject/internal/common"
 	"DevOpsMetricsProject/internal/constants"
 	"DevOpsMetricsProject/internal/logger"
 	"errors"
@@ -17,7 +18,7 @@ type BackupSupportStorage struct {
 	MemStorage
 }
 
-func NewBackupSupportStorage(restore bool, backup backup.MetricsBackup, log logger.Recorder) MetricsRepository {
+func NewBackupSupportStorage(restore bool, backup backup.MetricsBackup, log logger.Recorder) common.MetricsRepository {
 	mStg := &BackupSupportStorage{}
 	mStg.backup = backup
 	mStg.log = log
@@ -65,7 +66,7 @@ func (mStg *BackupSupportStorage) UpdateMetricByName(oper constants.UpdateOperat
 			timer := time.NewTimer(time.Duration(v) * time.Second)
 			<-timer.C
 		}
-		err = mStg.backup.UpdateMetricDB(mType, mName, updatedValue)
+		err = mStg.backup.UpdateMetricBackup(mType, mName, updatedValue)
 
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
